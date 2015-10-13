@@ -15,11 +15,11 @@ def _maybe_truncate_above_topography(z, f):
     # check to make sure the mask is only at the bottom
     if not fm.mask[-1]:
         raise ValueError('topography should be at the bottom of the column')
-    if np.diff(f.mask).sum() != 1:
+    if np.diff(fm.mask).sum() != 1:
         raise ValueError('topographic mask should be monotonic')
 
-    zout = z[~f.mask]
-    fout = f.compressed()
+    zout = z[~fm.mask]
+    fout = fm.compressed()
     return zout, fout
 
 def neutral_modes_from_N2_profile(z, N2, f0, depth=None, **kwargs):

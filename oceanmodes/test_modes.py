@@ -1,6 +1,6 @@
 import numpy as np
 import unittest
-import modes
+import oceanmodes as modes
 
 class TestBaroclinc(unittest.TestCase):
 
@@ -12,6 +12,11 @@ class TestBaroclinc(unittest.TestCase):
         zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
         self.assertEqual(len(ft), nz)
         self.assertEqual(len(zt), nz)
+
+        f[-1] = np.nan
+        zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
+        self.assertEqual(len(ft), nz-1)
+        self.assertEqual(len(zt), nz-1)
 
         f = np.ma.masked_array(f, z==(nz-1))
         zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
