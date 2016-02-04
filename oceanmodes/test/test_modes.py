@@ -6,7 +6,7 @@ import numpy as np
 import unittest
 import oceanmodes as modes
 
-class TestBaroclinc(unittest.TestCase):
+class TestNeutralModes(unittest.TestCase):
 
     def test_topography_truncation(self):
         nz = 10
@@ -46,6 +46,28 @@ class TestBaroclinc(unittest.TestCase):
         z, def_radius, bc_modes = modes.neutral_modes_from_N2_profile(
             zin, N2, f0, depth=1.1
         )
+
+    def test_neutral_mode_args(self):
+        nz = 10
+        N2 = np.zeros(nz)
+        depth = np.arange(nz)
+        # check for unequal lengths of arrays
+        with self.assertRaises(ValueError):
+            _, _, _ = modes.neutral_modes_from_N2_profile(
+                depth[1:], N2, 1.
+            )
+        with self.assertRaises(ValueError):
+            _, _, _ = modes.neutral_modes_from_N2_profile(
+                depth, N2[1:], 1.
+            )
+
+        depth_non_monotonic = depth
+        depth_non_monotonic[0] = 5
+        # check for non-monotonic profile
+        with self.assertRaises(ValueError) as cm:
+            _, _, _ = modes.neutral_modes_from_N2_profile(
+                depth_non_monotonic, N2, 1.
+            )
 
     def test_N2_const_equal_spacing(self):
         # prepare a test N^2 profile
