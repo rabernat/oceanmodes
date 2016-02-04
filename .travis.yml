@@ -31,7 +31,7 @@ install:
   - pip install -e .
 
 script:
-  - py.test oceanmodes --cov=oceanmodes --cov-config .coveragerc --cov-report term-missing
+  - py.test oceanmodes --cov=oceanmodes --cov-config .coveragerc --cov-report term-missing -v
 
 after_success:
   - codecov
