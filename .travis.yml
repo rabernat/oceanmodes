@@ -6,10 +6,14 @@ notifications:
 
 matrix:
   fast_finish: true
-  include:
-  - python: 2.7
-  - python: 3.4
-  - python: 3.5
+
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+
+env:
+  - CONDA_PACKAGES="numpy scipy"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -25,7 +29,7 @@ before_install:
   - conda info -a
 
 install:
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES
   - source activate test-environment
   - pip install codecov pytest-cov
   - pip install -e .
