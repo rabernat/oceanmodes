@@ -15,4 +15,6 @@ setup(name='oceanmodes',
       install_requires=[
           'numpy','scipy'
       ],
+      setup_requires=['pytest-runner'],
+      tests_require=['pytest', 'coverage'],
       zip_safe=False)
