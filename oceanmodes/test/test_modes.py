@@ -1,3 +1,7 @@
+# python 3 forward compatibility
+from __future__ import absolute_import, division, print_function
+from builtins import *
+#
 import numpy as np
 import unittest
 import oceanmodes as modes
@@ -63,13 +67,12 @@ class TestBaroclinc(unittest.TestCase):
         self.assertEqual(nz+1, bc_modes.shape[0],
             msg='modes array must the right shape')
 
-        print def_radius
         self.assertTrue(np.all(np.diff(def_radius[1:]) < 0),
             msg='modes should be sorted in order of decreasing deformation radius')
 
         nmodes = len(def_radius)
         zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
-        self.assertListEqual(range(nmodes), list(zero_crossings),
+        self.assertListEqual(list(range(nmodes)), list(zero_crossings),
             msg='modes should have the correct number of zero crossings')
 
         mode_amplitudes = (bc_modes**2).sum(axis=0)

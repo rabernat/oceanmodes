@@ -1,3 +1,7 @@
+# python 3 forward compatibility
+from __future__ import absolute_import, division, print_function
+from builtins import *
+#
 import numpy as np
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import eigs
@@ -136,7 +140,7 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
     # now turn all of that into a sparse matrix
 
     L = lil_matrix((nz+1, nz+1), dtype=np.float64)
-    for i in xrange(1,nz):
+    for i in range(1,nz):
         a = (dzf[i-1] * N2[i-1] * dzc[i-1])**-1
         b = -(dzf[i-1] * N2[i-1]* dzc[i-1])**-1 - (dzf[i] * N2[i] * dzc[i-1])**-1
         c = (dzf[i] * N2[i] * dzc[i-1])**-1

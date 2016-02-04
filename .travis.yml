@@ -13,7 +13,7 @@ python:
   - 3.5
 
 env:
-  - CONDA_PACKAGES="numpy scipy"
+  - CONDA_PACKAGES="numpy scipy pytest future"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -31,7 +31,7 @@ before_install:
 install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES
   - source activate test-environment
-  - pip install codecov pytest-cov
+  - pip install pytest-cov
   - pip install -e .
 
 script:
