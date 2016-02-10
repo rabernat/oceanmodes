@@ -5,7 +5,7 @@ from builtins import *
 import numpy as np
 from scipy import fftpack as fft
 from scipy.sparse import lil_matrix, csc_matrix
-from scipy.sparse.linalg import eigs, inv, dot
+from scipy.sparse.linalg import eigs, inv
 
 def _maybe_truncate_above_topography(z, f):
     """Return truncated versions of z and f if f is masked or nan.
