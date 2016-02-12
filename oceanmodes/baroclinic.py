@@ -176,7 +176,8 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort='LI', num=4, depth=None, **kwargs):
+def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
+                                         sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic neutral modes from a profile of 
         buoyancy frequency truncated at the bottom.
     """
@@ -185,12 +186,13 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, 
     return _instability_analysis_from_N2_profile_raw(
                                     z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort, num, depth=depth, **kwargs)
 
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort='LI', num=4, depth=None, **kwargs):
+def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
+                                              sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
     
         Solves the eigenvalue problem
 
-            \left ( \frac{\partial}{\partial t} + U \cdot \nabla \right ) \left ( \nabla^2 + \frac{d}{dz} \frac{f_0^2}{N^2} \frac{d \psi}{d z} \right )
+            \left ( \frac{\partial}{\partial t} + U \cdot \nabla \right ) \left ( \nabla^2 + \frac{d}{dz} \frac{f_0^2}{N^2} \frac{d \psi}{d z} \right ) \psi
             + u \cdot \nabla Q
             = 0
 
@@ -213,12 +215,19 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         f0 : float
             Coriolis parameter.
         Q : array_like
-            The background QGPV (\beta y + \left ( \nabla^2 + \frac{d}{dz} \frac{f_0^2}{N^2} \frac{d \Psi}{d z} \right ))
+            The background QGPV 
+            (\beta y + \left ( \nabla^2 + \frac{d}{dz} \frac{f_0^2}{N^2} \frac{d \Psi}{d z} \right ))
             and Psi is the streamfunction of the background velocity.
-        eta : array_like
-            The topographic change at the top and bottom.
+        etax, etay : array_like
+            The topographic horizontal gradient at the top and bottom.
         B : array_like
             The background buoyancy
+        Nx, Ny, dx, dy: float
+            Parameters to define the horizontal wavenumber
+        sort: string, optional
+            Sorts the eigenvalues depending on the given argument
+        num: integer, optional
+            Number of eigenvalues returned
         depth : float, optional
             Total water column depth. If missing will be inferred from z.
         kwargs : optional
@@ -230,9 +239,9 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         zf : array_like
             The depths at which phi is defined. Different from z.
         psi : array_like
-            vertical modes
+            eigenvectors
         omega: array_like
-            growth rate
+            eigenvalues (imaginary part is the growth rate)
         k, l : array_like
             inverse horizontal wavelengths
     """

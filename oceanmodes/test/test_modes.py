@@ -5,7 +5,7 @@ from builtins import *
 import numpy as np
 import unittest
 import oceanmodes as modes
-reload(modes)
+#reload(modes)
 
 #############
 # Neutral Modes
@@ -13,7 +13,6 @@ reload(modes)
 class TestNeutralModes(unittest.TestCase):
     """class to test Neutral Modes
     """
-
     def test_topography_truncation(self):
         nz = 10
         z = np.arange(nz)
@@ -114,30 +113,6 @@ class TestNeutralModes(unittest.TestCase):
 class TestLinearInstability(unittest.TestCase):
     """class to test Linear Instability Modes
     """
-    
-    def test_topography_truncation(self):
-        nz = 10
-        z = np.arange(nz)
-        f = np.ones(nz)
-
-        zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
-        self.assertEqual(len(ft), nz)
-        self.assertEqual(len(zt), nz)
-
-        f[-1] = np.nan
-        zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
-        self.assertEqual(len(ft), nz-1)
-        self.assertEqual(len(zt), nz-1)
-
-        f = np.ma.masked_array(f, z==(nz-1))
-        zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
-        self.assertEqual(len(ft), nz-1)
-        self.assertEqual(len(zt), nz-1)
-
-        f.mask[0] = True
-        with self.assertRaises(ValueError):
-            zt, ft = modes.baroclinic._maybe_truncate_above_topography(z,f)
-
     def test_depth_kwarg(self):
         nz = 20
         zin = 0.5*nz**-1 + np.arange(nz, dtype=np.float64)/nz
@@ -235,7 +210,8 @@ class TestLinearInstability(unittest.TestCase):
         self.assertEqual(nz+1, vertical_modes.shape[0],
             msg='modes array must be in the right shape')
 
-        self.assertTrue(np.all( np.diff( growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) < 0.),
+        self.assertTrue(np.all( np.diff( 
+                    growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
         #self.assertTrue(np.all( max_growth_rate == 0.),
             msg='imaginary part of modes should be descending')
 
