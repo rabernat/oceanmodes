@@ -1,1 +1,1 @@
-from . baroclinic import neutral_modes_from_N2_profile
+from . baroclinic import neutral_modes_from_N2_profile, instability_analysis_from_N2_profile
