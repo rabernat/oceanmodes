@@ -318,88 +318,81 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     for j in range(len(l)):
         for i in range(len(k)):
         
-            #print i, j, k[i], l[j]
-        
             L = lil_matrix((nz+1, nz+1), dtype=np.float64)
             G = L.copy()
+        
+            ########
+            # n = 0
+            ########
+            R = k[i] * .5*(ubar[0]+ubar[1]) + l[j] * .5*(vbar[0]+vbar[1]) 
+            D = dzf[0]**-1
+            S = .5 * ( k[i] * ( (ubar[0]-ubar[1])*D - N2[0]/f0 * etay[0] )
+                                        + l[j] * ( (vbar[0]-vbar[1])*D + N2[0]/f0 * etax[0] ) )
+
+            L[0, 0] = R * D - S
+            L[0, 1] = R * (-D) - S
+            G[0, 0] = D
+            G[0, 1] = - D
+        
+            ########
+            # n = nz
+            ########
+            R = k[i] * .5*(ubar[nz-1]+ubar[nz]) + l[j] * .5*(vbar[nz-1]+vbar[nz]) 
+            D = dzf[nz-1]**-1
+            S = .5 * ( k[i] * ( (ubar[nz-1]-ubar[nz])*D - N2[nz-1]/f0 * etay[1] )
+                                        + l[j] * ( (vbar[nz-1]-vbar[nz])*D + N2[nz-1]/f0 * etax[1] ) )
+
+            L[nz, nz-1] = R * D - S
+            L[nz, nz] = R * (-D) - S
+            G[nz, nz-1] = D
+            G[nz, nz] = - D
+        
+            #########
+            # 0 < n < nz
+            #########
+            for n in range(1,nz):
                 
-            for n in range(nz+1):
-                    
-                R = ( k[i]*ubar[n] + l[j]*vbar[n] )
-#             print R
-
-                if n == 0:
+                R = k[i] * ubar[n] + l[j] * vbar[n] 
+                K2 = k[i]**2 + l[j]**2
+                bf = f0**2 * dzc[n-1]**-1
+                b_1 = N2[n-1] * dzf[n-1]
+                b = N2[n] * dzf[n]
+                B_1 = bf * b_1**-1 
+                B = - (bf * ( b**-1 + b_1**-1 ) + K2)
+                Bt1 = bf * b**-1 
     
-                    D = .5 * dzf[n]**-1
-                    S = ( k[i] * ( (ubar[n+1]-ubar[n])*D - N2[n]/f0 * etay[0] )
-                                        + l[j] * ( (vbar[n+1]-vbar[n])*D + N2[n]/f0 * etax[0] ) )
-#                 print D, S
-
-                    L[n, n] = R * ( -D ) - S
-                    L[n, n+1] = R * D - S
-                    G[n, n] = - D
-                    G[n, n+1] = D
-    
-                elif n > 0 and n < nz:
-    
-                    K2 = k[i]**2 + l[j]**2
-                    bf = f0**2 * dzc[n-1]**-1
-                    b_1 = N2[n-1] * dzf[n-1]
-                    b = N2[n] * dzf[n]
-                    B_1 = bf * b_1**-1 - K2
-                    B = - bf * ( b**-1 + b_1**-1 ) - K2
-                    Bt1 = bf * b**-1 - K2
-    
-                    N2Z = (N2[n]*dzf[n])**-1
-                    N2Z_1 = (N2[n-1]*dzf[n-1])**-1
-                    P = ( k[i] * ( beta - bf * ( ubar[n+1] * N2Z
+                N2Z = (N2[n]*dzf[n])**-1
+                N2Z_1 = (N2[n-1]*dzf[n-1])**-1
+                P = ( k[i] * ( beta - bf * ( ubar[n+1] * N2Z
                                                                 - (N2Z + N2Z_1) * ubar[n]
                                                                 + N2Z_1 * ubar[n-1] ) )
-                         - l[j] * bf * ( vbar[n+1] * N2Z 
+                        - l[j] * bf * ( vbar[n+1] * N2Z 
                                                            - (N2Z + N2Z_1) * vbar[n]
                                                            + N2Z_1 * vbar[n-1] )
-                          )
-#                 print B_1, B, Bt1, P
+                     )
 
-                    L[n, n-1] = R * B_1 + P
-                    L[n, n] = R * B + P
-                    L[n, n+1] = R * Bt1 + P
-                    G[n, n-1] = B_1
-                    G[n, n] = B
-                    G[n, n+1] = Bt1
+                L[n, n-1] = R * B_1
+                L[n, n] = R * B + P
+                L[n, n+1] = R * Bt1
+                G[n, n-1] = B_1
+                G[n, n] = B
+                G[n, n+1] = Bt1
 
-                else:
-
-                    D = .5 * dzf[n-1]**-1
-                    S = ( k[i] * ( (ubar[n]-ubar[n-1])*D - N2[n-1]/f0 * etay[1] )
-                                        + l[j] * ( (vbar[n]-vbar[n-1])*D + N2[n-1]/f0 * etax[1] ) )
-#                 print S
-
-                    L[n, n-1] = R * ( -D ) - S
-                    L[n, n] = R * D - S
-                    G[n, n-1] = - D
-                    G[n, n] = D     
-                    
-            #val, func = eigs( lil_matrix(lil_matrix(inv(G)).dot(L)), k=num, which=sort )   # default returns 6 eigenvectors
-            val, func = eigs( csc_matrix(csc_matrix(inv(csc_matrix(G))).dot(csc_matrix(L))), 
-                             k=num, which=sort )   # default returns 6 eigenvectors
-
+            val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
+                                    k=4, which='LI', ncv=20 )  # default returns 6 eigenvectors
+#         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
+#                                  which='LI', sigma=1e1j, ncv=20 )
+                
             ###########
             # eigs returns complex values. For a linear-stability analysis, 
             # we don't want the eigenvalues to be real
             ###########
-            #tol = 1e-20
-            #np.testing.assert_allclose(np.imag(func), 0, atol=tol)
-            #np.testing.assert_allclose(np.imag(val), 0, atol=tol)
-            #val = np.real(val)
-            #func = np.real(func)
-
             if i == 0 and j == 0:
                 omega = np.zeros( (len(val), len(l), len(k)), dtype=complex )
                 psi = np.zeros( (nz+1, len(val), len(l), len(k)), dtype=complex )
             omega[:, j, i] = val
             psi[:, :, j, i] = func  # Each column is the eigenfunction
-            
+    
     ###########
     # they are often sorted and normalized but not always,
     # so we have to do that here.

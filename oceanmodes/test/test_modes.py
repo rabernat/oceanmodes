@@ -176,30 +176,33 @@ class TestLinearInstability(unittest.TestCase):
             )
 
     def test_N2_const_equal_spacing(self):
+        """ Eady setup
+        """
         # prepare a test N^2 profile
         nz = 20
-        zin = 0.5*nz**-1 + np.arange(nz, dtype=np.float64)/nz
-        N2 = np.linspace(1e-3, 1., nz)
-        # N2 = np.full(nz, 1.)
+        # zin = 0.5*nz**-1 + np.arange(nz, dtype=np.float64)/nz
+        zin = np.arange(nz+1, dtype=np.float64)/nz
+        # N2 = np.linspace(1e-3, 1., nz)
+        N2 = np.full(nz, 1.)
         f0 = 1.
-        beta = 1e-6
-        # beta = 0.
-        Nx = 20
-        Ny = 20
-        dx = .1
-        dy = .1
+        # beta = 1e-6
+        beta = 0.
+        Nx = int(1e2)
+        Ny = int(1e2)
+        dx = 1e-1
+        dy = 1e-1
         # ubar = np.zeros((nz+1, 1))
-        # vbar = np.zeros((nz+1, 1))
+        vbar = np.zeros((nz+1, 1))
         # ubar = 1e-2 * np.ones((nz+1, 1))
         # ubar[:nz/2, 0] = 1e-2 * np.arange(nz/2, 0., -1, dtype=np.float64)/nz*2
         # ubar[nz/2:, 0] = 1e-2 * np.arange(nz/2+1, dtype=np.float64)/nz*2
-        ubar = 1e-2 * np.arange(nz+1)
-        vbar = 1e-2 * np.ones((nz+1, 1))
+        ubar = np.linspace(nz, 0 , nz+1)/nz
+        # vbar = 1e-2 * np.ones((nz+1, 1))
         etax = np.zeros((2, 1))
         etay = np.zeros((2, 1))
 
         k, l, z, max_growth_rate, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
-                zin, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort='LI', num=4
+                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=1., sort='LI', num=4
         )
         
         # make sure we got the right number of modes
@@ -214,7 +217,7 @@ class TestLinearInstability(unittest.TestCase):
                     growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
         #self.assertTrue(np.all( max_growth_rate == 0.),
             msg='imaginary part of modes should be descending')
-
+        
         #nmodes = len(def_radius)
         #zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
         #self.assertListEqual(list(range(nmodes)), list(zero_crossings),
@@ -231,3 +234,16 @@ class TestLinearInstability(unittest.TestCase):
         #mode_amplitude3 = (np.absolute(vertical_modes[:, 2])).sum()
         #self.assertTrue(np.allclose(1., mode_amplitude3),
         #    msg='mode3 should be normalized to amplitude of 1')
+        
+        #########
+        # Analytical solution for Eady growth rate
+        #########
+        growthEady = np.zeros((len(k), 1))
+        for i in range(len(k)):
+            if (np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) < 0:
+                growthEady[i] = 0.
+            else:
+                growthEady[i] = ubar.max() * np.sqrt( (np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) )
+                
+        self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady),
+            msg='The numerical growth rates should be close to the analytical Eady solution' )
