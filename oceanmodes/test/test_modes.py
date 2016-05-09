@@ -183,6 +183,7 @@ class TestLinearInstability(unittest.TestCase):
         ###########
         # prepare parameters for Eady
         ###########
+        nz = 1000
         zin = np.arange(nz+1, dtype=np.float64)/nz
         N2 = np.full(nz, 1.)
         f0 = 1.
