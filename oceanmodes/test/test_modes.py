@@ -243,5 +243,5 @@ class TestLinearInstability(unittest.TestCase):
             else:
                 growthEady[i] = ubar.max() * np.sqrt( (np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) )
                 
-        self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady),
+        self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady, atol=5e-2),
             msg='The numerical growth rates should be close to the analytical Eady solution' )
