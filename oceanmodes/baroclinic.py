@@ -397,7 +397,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         #             G[n, n+1] = 1.
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                            k=num, which='LI', ncv=100, maxiter=1000 )  # default returns 6 eigenvectors
+                                            k=num, which='LI', ncv=nz, maxiter=10*nz )  # default returns 6 eigenvectors
 #         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
 #                                  which='LI', sigma=1e1j, ncv=20 )
                 

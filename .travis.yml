@@ -26,6 +26,7 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  - conda install anaconda=2.4
   - conda info -a
 
 install:
