@@ -32,7 +32,7 @@ install:
   - conda install anaconda=2.4
   #- conda create --name testoceanmodes --file oceanmodes-exported-packages.txt
   #- source activate testoceanmodes
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES -f oceanmodes-exported-packages.txt
+  - conda create -q -n test-environment -file oceanmodes-exported-packages.txt python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES
   - source activate test-environment
   - pip install codecov pytest-cov
   - pip install -e .
