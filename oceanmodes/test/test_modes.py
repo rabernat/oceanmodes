@@ -114,7 +114,7 @@ class TestLinearInstability(unittest.TestCase):
     """class to test Linear Instability Modes
     """
     def test_depth_kwarg(self):
-        nz = 20
+        nz = 100
         zin = 0.5*nz**-1 + np.arange(nz, dtype=np.float64)/nz
         N2 = np.full(nz, 1.)
         f0 = 1.
@@ -153,7 +153,9 @@ class TestLinearInstability(unittest.TestCase):
         etax = np.array([1e-1*beta, beta])
         etay = np.array([1e-1*beta, beta])
         
+        ###########
         # check for unequal lengths of arrays
+        ###########
         with self.assertRaises(ValueError):
             _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
                 depth[1:], N2, 1., beta, 20, 20, 1e-1, 1e-1, ubar, vbar, etax, etay
@@ -175,41 +177,36 @@ class TestLinearInstability(unittest.TestCase):
                 depth_non_monotonic, N2, 1., beta, 50, 50, 1e-1, 1e-1, ubar, vbar, etax, etay
             )
 
-    def test_N2_const_equal_spacing(self):
+    def test_Eady(self):
         """ Eady setup
         """
-        # prepare a test N^2 profile
-        nz = 20
-        # zin = 0.5*nz**-1 + np.arange(nz, dtype=np.float64)/nz
+        ###########
+        # prepare parameters for Eady
+        ###########
         zin = np.arange(nz+1, dtype=np.float64)/nz
-        # N2 = np.linspace(1e-3, 1., nz)
         N2 = np.full(nz, 1.)
         f0 = 1.
-        # beta = 1e-6
         beta = 0.
         Nx = int(1e2)
         Ny = int(1e2)
         dx = 1e-1
         dy = 1e-1
-        # ubar = np.zeros((nz+1, 1))
-        vbar = np.zeros((nz+1, 1))
-        # ubar = 1e-2 * np.ones((nz+1, 1))
-        # ubar[:nz/2, 0] = 1e-2 * np.arange(nz/2, 0., -1, dtype=np.float64)/nz*2
-        # ubar[nz/2:, 0] = 1e-2 * np.arange(nz/2+1, dtype=np.float64)/nz*2
-        ubar = np.linspace(nz, 0 , nz+1)/nz
-        # vbar = 1e-2 * np.ones((nz+1, 1))
-        etax = np.zeros((2, 1))
-        etay = np.zeros((2, 1))
+        vbar = np.zeros(nz+1)
+        ubar = zin
+        etax = np.zeros(2)
+        etay = np.zeros(2)
 
         k, l, z, max_growth_rate, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
-                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=1., sort='LI', num=4
+                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=1., sort='LI', num=2
         )
         
+        ###################
         # make sure we got the right number of modes
         # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
         # compute them
         # self.assertEqual(nz, len(def_radius))
         # make sure the modes themselves have the right structure
+        ###################
         self.assertEqual(nz+1, vertical_modes.shape[0],
             msg='modes array must be in the right shape')
 

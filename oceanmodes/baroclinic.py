@@ -320,38 +320,49 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         
             L = lil_matrix((nz+1, nz+1), dtype=np.float64)
             G = L.copy()
-        
-            ########
-            # n = 0
-            ########
+
+            ################
+            # n = 0 (surface)
+            ################
             R = k[i] * .5*(ubar[0]+ubar[1]) + l[j] * .5*(vbar[0]+vbar[1]) 
+        #         R = k[i] * ubar[0] + l[j] * vbar[0]
             D = dzf[0]**-1
             S = .5 * ( k[i] * ( (ubar[0]-ubar[1])*D - N2[0]/f0 * etay[0] )
-                                        + l[j] * ( (vbar[0]-vbar[1])*D + N2[0]/f0 * etax[0] ) )
+                                                + l[j] * ( (vbar[0]-vbar[1])*D + N2[0]/f0 * etax[0] ) )
+        #         S = k[i] * ((ubar[0] - ubar[1])*D - N2[0]/f0 * etay[0]) + l[j] * ((vbar[0] - vbar[1])*D + N2[0]/f0 * etax[0])
+        #                 print D, S
 
-            L[0, 0] = R * D - S
-            L[0, 1] = R * (-D) - S
-            G[0, 0] = D
-            G[0, 1] = - D
-        
-            ########
-            # n = nz
-            ########
+            L[0, 0] = R - S * D**-1
+            L[0, 1] = R * (-1.) - S * D**-1
+        #         L[0, 1] = R
+            G[0, 0] = 1.
+            G[0, 1] = - 1.
+        #         G[0, 1] = 1.
+
+            ################
+            # n = nz (bottom)
+            ################
             R = k[i] * .5*(ubar[nz-1]+ubar[nz]) + l[j] * .5*(vbar[nz-1]+vbar[nz]) 
+        #         R = k[i] * ubar[nz] + l[j] * vbar[nz]
             D = dzf[nz-1]**-1
             S = .5 * ( k[i] * ( (ubar[nz-1]-ubar[nz])*D - N2[nz-1]/f0 * etay[1] )
-                                        + l[j] * ( (vbar[nz-1]-vbar[nz])*D + N2[nz-1]/f0 * etax[1] ) )
+                                                + l[j] * ( (vbar[nz-1]-vbar[nz])*D + N2[nz-1]/f0 * etax[1] ) )
+        #         S = k[i] * ((ubar[nz-1] - ubar[nz])*D - N2[nz-1]/f0 * etay[1]) + l[j] * ((vbar[nz-1] - vbar[nz])*D + N2[nz-1]/f0 * etax[1])
+        #                 print S
 
-            L[nz, nz-1] = R * D - S
-            L[nz, nz] = R * (-D) - S
-            G[nz, nz-1] = D
-            G[nz, nz] = - D
-        
-            #########
-            # 0 < n < nz
-            #########
+            L[nz, nz-1] = R - S * D**-1
+            L[nz, nz] = R * (-1.) - S * D**-1
+        #         L[nz, nz] = R
+            G[nz, nz-1] = 1.
+            G[nz, nz] = - 1.
+        #         G[nz, nz] = 1.
+
+            ################
+            # 0 < n < nz (interior)
+            ################
             for n in range(1,nz):
-                
+
+        #             print R
                 R = k[i] * ubar[n] + l[j] * vbar[n] 
                 K2 = k[i]**2 + l[j]**2
                 bf = f0**2 * dzc[n-1]**-1
@@ -360,16 +371,17 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
                 B_1 = bf * b_1**-1 
                 B = - (bf * ( b**-1 + b_1**-1 ) + K2)
                 Bt1 = bf * b**-1 
-    
+
                 N2Z = (N2[n]*dzf[n])**-1
                 N2Z_1 = (N2[n-1]*dzf[n-1])**-1
                 P = ( k[i] * ( beta - bf * ( ubar[n+1] * N2Z
-                                                                - (N2Z + N2Z_1) * ubar[n]
-                                                                + N2Z_1 * ubar[n-1] ) )
-                        - l[j] * bf * ( vbar[n+1] * N2Z 
-                                                           - (N2Z + N2Z_1) * vbar[n]
-                                                           + N2Z_1 * vbar[n-1] )
-                     )
+                                                                        - (N2Z + N2Z_1) * ubar[n]
+                                                                        + N2Z_1 * ubar[n-1] ) )
+                            - l[j] * bf * ( vbar[n+1] * N2Z 
+                                                                   - (N2Z + N2Z_1) * vbar[n]
+                                                                   + N2Z_1 * vbar[n-1] )
+                            )
+        #             print B**-1, P
 
                 L[n, n-1] = R * B_1
                 L[n, n] = R * B + P
@@ -377,9 +389,15 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
                 G[n, n-1] = B_1
                 G[n, n] = B
                 G[n, n+1] = Bt1
+        #             L[n, n-1] = R
+        #             L[n, n] = R + P * B**-1
+        #             L[n, n+1] = R
+        #             G[n, n-1] = 1.
+        #             G[n, n] = 1.
+        #             G[n, n+1] = 1.
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                    k=4, which='LI', ncv=20 )  # default returns 6 eigenvectors
+                                            k=num, which='LI', ncv=100, maxiter=1000 )  # default returns 6 eigenvectors
 #         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
 #                                  which='LI', sigma=1e1j, ncv=20 )
                 
@@ -405,5 +423,5 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     psi = psi[:, p]
     
     # return the first four leading modes
-    return k, l, zf, omega1d[p], omega[:4], psi[:, :4]
+    return k, l, zf, omega1d[p], omega[:num], psi[:, :num]
     
