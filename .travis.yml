@@ -27,6 +27,8 @@ before_install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda install anaconda=2.4
+  - conda create --name oceanmodes --file anaconda2_4_env.txt
+  - source activate oceanmodes
   - conda info -a
 
 install:
