@@ -463,12 +463,12 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
                 N2Z = (N2[n]*dzf[n])**-1
                 N2Z_1 = (N2[n-1]*dzf[n-1])**-1
                 P = ( k[i] * ( beta - bf * ( ubar[n+1] * N2Z
-                            - (N2Z + N2Z_1) * ubar[n]
-                           　+ N2Z_1 * ubar[n-1] ) )
+                                                                - (N2Z + N2Z_1) * ubar[n]
+                                                                + N2Z_1 * ubar[n-1] ) )
                             - l[j] * bf * ( vbar[n+1] * N2Z 
-                            - (N2Z + N2Z_1) * vbar[n]
-                            + N2Z_1 * vbar[n-1] )
-                     )
+                                                           - (N2Z + N2Z_1) * vbar[n]
+                                                           + N2Z_1 * vbar[n-1] )
+                            )
 
                 L[n, n-1] = R * B_1
                 L[n, n] = R * B + P
