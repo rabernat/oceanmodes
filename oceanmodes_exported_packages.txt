@@ -62,7 +62,7 @@ simplegeneric=0.8.1
 singledispatch=3.4.0.3
 sip=4.16.9
 six=1.10.0
-sqlite=3.9.2=0
+sqlite=3.9.2
 ssl_match_hostname=3.4.0.2
 system=5.8
 terminado=0.5
