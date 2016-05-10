@@ -509,6 +509,6 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     omega = omega[p]
     psi = psi[:, p]
     
-    # return the first four leading modes
+    # return the first 'num' leading modes
     return k, l, zf, omega1d[p], omega[:num], psi[:, :num]
     
