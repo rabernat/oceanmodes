@@ -13,7 +13,7 @@ python:
   - 3.5
 
 env:
-  - CONDA_PACKAGES="numpy scipy pytest future"
+  - CONDA_PACKAGES="numpy scipy pytest future jupyter ipython matplotlib nomkl scikit-learn numexpr"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -33,7 +33,6 @@ install:
   #- conda create --name testoceanmodes --file oceanmodes-exported-packages.txt
   #- source activate testoceanmodes
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES
-  - conda install scipy numpy jupyter ipython matplotlib nomkl scikit-learn numexpr --name=test-environment
   - conda remove mkl mkl-service --name=test-environment
   - source activate test-environment
   - pip install codecov pytest-cov
