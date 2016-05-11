@@ -105,8 +105,8 @@ class TestNeutralModes(unittest.TestCase):
         mode_amplitudes = (bc_modes**2).sum(axis=0)
         self.assertTrue(np.allclose(np.ones(nmodes), mode_amplitudes),
             msg='modes should be normalized to amplitude of 1')
-        
-        
+
+
 ##########
 # Linear Instability
 ##########
@@ -120,8 +120,8 @@ class TestLinearInstability(unittest.TestCase):
         f0 = 1.
         #beta = 1e-6
         beta = 0.
-        Nx = 20
-        Ny = 20
+        Nx = 1
+        Ny = 1
         dx = .1
         dy = .1
         ubar = np.zeros((nz+1, 1))
@@ -152,17 +152,17 @@ class TestLinearInstability(unittest.TestCase):
         beta = 1e-6
         etax = np.array([1e-1*beta, beta])
         etay = np.array([1e-1*beta, beta])
-        
+
         ###########
         # check for unequal lengths of arrays
         ###########
         with self.assertRaises(ValueError):
             _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-                depth[1:], N2, 1., beta, 20, 20, 1e-1, 1e-1, ubar, vbar, etax, etay
+                depth[1:], N2, 1., beta, 1, 1, 1e-1, 1e-1, ubar, vbar, etax, etay
             )
         with self.assertRaises(ValueError):
             _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-                depth, N2[1:], 1., beta, 20, 20, 1e-1, 1e-1, ubar, vbar, etax, etay
+                depth, N2[1:], 1., beta, 1, 1, 1e-1, 1e-1, ubar, vbar, etax, etay
             )
         #with self.assertRaises(ValueError):
         #    _, _, _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
@@ -177,19 +177,19 @@ class TestLinearInstability(unittest.TestCase):
                 depth_non_monotonic, N2, 1., beta, 50, 50, 1e-1, 1e-1, ubar, vbar, etax, etay
             )
 
-    def test_Eady(self):
+    def test_Eady(self, atol=5e-2, nz=20):
         """ Eady setup
         """
         ###########
         # prepare parameters for Eady
         ###########
-        nz = 400
+        nz = nz
         zin = np.arange(nz+1, dtype=np.float64)/nz
         N2 = np.full(nz, 1.)
         f0 = 1.
         beta = 0.
-        Nx = int(1e2)
-        Ny = int(1e2)
+        Nx = 10
+        Ny = 1
         dx = 1e-1
         dy = 1e-1
         vbar = np.zeros(nz+1)
@@ -197,10 +197,12 @@ class TestLinearInstability(unittest.TestCase):
         etax = np.zeros(2)
         etay = np.zeros(2)
 
-        k, l, z, max_growth_rate, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
-                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=1., sort='LI', num=2
+        k, l, z, max_growth_rate, growth_rate, vertical_modes = \
+            modes.instability_analysis_from_N2_profile(
+                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy,
+                ubar, vbar, etax, etay, depth=1., sort='LI', num=2
         )
-        
+
         ###################
         # make sure we got the right number of modes
         # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
@@ -211,11 +213,11 @@ class TestLinearInstability(unittest.TestCase):
         self.assertEqual(nz+1, vertical_modes.shape[0],
             msg='modes array must be in the right shape')
 
-        self.assertTrue(np.all( np.diff( 
+        self.assertTrue(np.all( np.diff(
                     growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
         #self.assertTrue(np.all( max_growth_rate == 0.),
             msg='imaginary part of modes should be descending')
-        
+
         #nmodes = len(def_radius)
         #zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
         #self.assertListEqual(list(range(nmodes)), list(zero_crossings),
@@ -224,24 +226,24 @@ class TestLinearInstability(unittest.TestCase):
         mode_amplitude1 = (np.absolute(vertical_modes[:, 0])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude1),
             msg='mode1 should be normalized to amplitude of 1 at all horizontal wavenumber points')
-        
+
         mode_amplitude2 = (np.absolute(vertical_modes[:, 1])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude2),
             msg='mode2 should be normalized to amplitude of 1 at all horizontal wavenumber points')
-        
+
         #mode_amplitude3 = (np.absolute(vertical_modes[:, 2])).sum()
         #self.assertTrue(np.allclose(1., mode_amplitude3),
         #    msg='mode3 should be normalized to amplitude of 1')
-        
+
         #########
         # Analytical solution for Eady growth rate
         #########
-        growthEady = np.zeros((len(k), 1))
+        growthEady = np.zeros(len(k))
         for i in range(len(k)):
-            if (np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) < 0:
+            if (k[i]==0) or ((np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) < 0):
                 growthEady[i] = 0.
             else:
                 growthEady[i] = ubar.max() * np.sqrt( (np.tanh(.5*k[i])**-1 - .5*k[i]) * (.5*k[i] - np.tanh(.5*k[i])) )
-                
-        self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady, atol=5e-2),
+
+        self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady, atol=atol),
             msg='The numerical growth rates should be close to the analytical Eady solution' )
