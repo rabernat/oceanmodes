@@ -13,7 +13,7 @@ python:
   - 3.5
 
 env:
-  - CONDA_PACKAGES="numpy scipy pytest future jupyter ipython matplotlib nomkl scikit-learn numexpr"
+  - CONDA_PACKAGES="numpy scipy pytest future nomkl"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
