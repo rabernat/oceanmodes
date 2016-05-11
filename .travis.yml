@@ -13,7 +13,7 @@ python:
   - 3.5
 
 env:
-  - CONDA_PACKAGES="numpy scipy pytest future"
+  - CONDA_PACKAGES="numpy scipy pytest future nomkl"
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -29,7 +29,11 @@ before_install:
   - conda info -a
 
 install:
+  #- conda install anaconda=2.4
+  #- conda create --name testoceanmodes --file oceanmodes-exported-packages.txt
+  #- source activate testoceanmodes
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION $CONDA_PACKAGES
+  - conda remove mkl mkl-service --name=test-environment
   - source activate test-environment
   - pip install codecov pytest-cov
   - pip install -e .
