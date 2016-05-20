@@ -187,121 +187,121 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, 
                                     z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort, num, depth=depth, **kwargs)
 
 def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
-                                              sort='LI', num=4, depth=None, **kwargs):
+                                              sort='LI', num=4, depth=None, ncv=100, itera=1000, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
 
-            $$ \frac{\partial q}{\partial t} + \boldsymbol{U} \cdot \nabla q + \boldsymbol{u} \cdot \nabla Q = 0 \ \ \ \ \ (1) $$
+            \frac{\partial q}{\partial t} + \boldsymbol{U} \cdot \nabla q + \boldsymbol{u} \cdot \nabla Q = 0 \ \ \ \ \ (1)
             
         with the boundary conditions of
 
-            $$ \frac{\partial b}{\partial t} + \boldsymbol{U} \cdot \nabla b + \boldsymbol{u} \cdot \nabla (B + N^2 \eta) = 0 \ \ \ \ \ (2) $$
+            \frac{\partial b}{\partial t} + \boldsymbol{U} \cdot \nabla b + \boldsymbol{u} \cdot \nabla (B + N^2 \eta) = 0 \ \ \ \ \ (2)
             
         at the top and bottom. Each variable is defined as
 
-            $$ q = \nabla^2 \ \psi + \Gamma \ \psi \ , \ \ \ \ Q = \beta y + \Gamma \ \Psi  \ \ \ \ \ (3) $$
+            q = \nabla^2 \ \psi + \Gamma \ \psi \ , \ \ \ \ Q = \beta y + \Gamma \ \Psi  \ \ \ \ \ (3)
 
         where $\Gamma := \frac{\partial}{\partial z} \Big( \frac{f^2}{N^2} \frac{\partial}{\partial z} \Big)$ and
 
-            $$ b = f \frac{\partial \psi}{\partial z} \ , \ \ \ \ B = f \frac{\partial \Psi}{\partial z} \ , \ \ \ \ N^2 = - \frac{g}{\rho_0} \frac{\partial \overline{\rho}}{\partial z} \ \ \ \ \ (4) $$
+            b = f \frac{\partial \psi}{\partial z} \ , \ \ \ \ B = f \frac{\partial \Psi}{\partial z} \ , \ \ \ \ N^2 = - \frac{g}{\rho_0} \frac{\partial \overline{\rho}}{\partial z} \ \ \ \ \ (4)
 
-            $$ \frac{\partial}{\partial z} ( \boldsymbol{f} \times \boldsymbol{u} ) = \nabla b = \frac{g}{\rho_0} \nabla \overline{\rho} \ \ \ \ \ (5) $$
+            \frac{\partial}{\partial z} ( \boldsymbol{f} \times \boldsymbol{u} ) = \nabla b = \frac{g}{\rho_0} \nabla \overline{\rho} \ \ \ \ \ (5)
             
         Assuming a plane-wave solution, viz.
 
-            $$ \psi = Re \big[ \hat{\psi}(z) e^{i(kx + ly - \omega t)} \big] $$
+            \psi = Re \big[ \hat{\psi}(z) e^{i(kx + ly - \omega t)} \big]
         
         we get
 
-            $$ \nabla^2 \psi = - (k^2 + l^2) \ \psi = -K^2 \psi \ , \ \ \ u = - \frac{\partial \psi}{\partial y} = -il \ \psi \ , \ \ \ v = \frac{\partial \psi}{\partial x} = ik \ \psi $$
+            \nabla^2 \psi = - (k^2 + l^2) \ \psi = -K^2 \psi \ , \ \ \ u = - \frac{\partial \psi}{\partial y} = -il \ \psi \ , \ \ \ v = \frac{\partial \psi}{\partial x} = ik \ \psi
 
-            $$ \frac{\partial}{\partial x} q = ik (-K^2 + \Gamma) \ \psi \ , \ \ \ \frac{\partial}{\partial y} q = il (-K^2 + \Gamma) \ \psi $$
+            \frac{\partial}{\partial x} q = ik (-K^2 + \Gamma) \ \psi \ , \ \ \ \frac{\partial}{\partial y} q = il (-K^2 + \Gamma) \ \psi
 
-            $$ \frac{\partial}{\partial x} Q = \Gamma V \ , \ \ \ \frac{\partial}{\partial y} Q = \beta - \Gamma U $$
+            \frac{\partial}{\partial x} Q = \Gamma V \ , \ \ \ \frac{\partial}{\partial y} Q = \beta - \Gamma U
 
-            $$ \frac{\partial}{\partial x} b = ikf \frac{\partial \psi}{\partial z} \ , \ \ \ \frac{\partial}{\partial y} b = ilf \frac{\partial \psi}{\partial z} $$
+            \frac{\partial}{\partial x} b = ikf \frac{\partial \psi}{\partial z} \ , \ \ \ \frac{\partial}{\partial y} b = ilf \frac{\partial \psi}{\partial z}
 
-            $$ \frac{\partial}{\partial x} B = f \frac{\partial V}{\partial z} \ , \ \ \ \frac{\partial}{\partial y} B = - f \frac{\partial U}{\partial z} $$
+            \frac{\partial}{\partial x} B = f \frac{\partial V}{\partial z} \ , \ \ \ \frac{\partial}{\partial y} B = - f \frac{\partial U}{\partial z}
             
-        so eqn. $(1)$ becomes
+        so eqn. (1) becomes
 
-            $$ -i \omega (-K^2 + \Gamma) \ \hat{\psi} + ik U (-K^2 + \Gamma) \ \hat{\psi} + il V (-K^2 + \Gamma) \ \hat{\psi} - il \frac{\partial Q}{\partial x} \ \hat{\psi} + ik \frac{\partial Q}{\partial y} \ \hat{\psi} = 0 $$
+            -i \omega (-K^2 + \Gamma) \ \hat{\psi} + ik U (-K^2 + \Gamma) \ \hat{\psi} + il V (-K^2 + \Gamma) \ \hat{\psi} - il \frac{\partial Q}{\partial x} \ \hat{\psi} + ik \frac{\partial Q}{\partial y} \ \hat{\psi} = 0
 
-            $$\therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega) (\Gamma - K^2) \ \hat{\psi} = - \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \ \hat{\psi} \ \ \ \ \ (6)$$
+            \therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega) (\Gamma - K^2) \ \hat{\psi} = - \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \ \hat{\psi} \ \ \ \ \ (6)
             
-        and eqn. $(2)$ becomes
+        and eqn. (2) becomes
 
-            $$ -i \omega f \frac{\partial \hat{\psi}}{\partial z} + ikf U \frac{\partial \hat{\psi}}{\partial z} + ilf V \frac{\partial \hat{\psi}}{\partial z} - il \bigg( f \frac{\partial V}{\partial z} + N^2 \frac{\partial \eta}{\partial x} \bigg) \ \hat{\psi} + ik \bigg( -f \frac{\partial U}{\partial z} + N^2 \frac{\partial \eta}{\partial y} \bigg) \ \hat{\psi} = 0 $$
+            -i \omega f \frac{\partial \hat{\psi}}{\partial z} + ikf U \frac{\partial \hat{\psi}}{\partial z} + ilf V \frac{\partial \hat{\psi}}{\partial z} - il \bigg( f \frac{\partial V}{\partial z} + N^2 \frac{\partial \eta}{\partial x} \bigg) \ \hat{\psi} + ik \bigg( -f \frac{\partial U}{\partial z} + N^2 \frac{\partial \eta}{\partial y} \bigg) \ \hat{\psi} = 0
 
-            $$\therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega) \frac{\partial \hat{\psi}}{\partial z} = \bigg[ k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) + l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) \bigg] \ \hat{\psi} \ \ \ \ \ (7) $$
+            \therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega) \frac{\partial \hat{\psi}}{\partial z} = \bigg[ k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) + l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) \bigg] \ \hat{\psi} \ \ \ \ \ (7)
             
-        Now the eigenfunctions are $\hat{\psi}$ and eigenvalues are $\omega$ so rewriting eqn. $(6)$ and $(7)$ gives
+        Now the eigenfunctions are \hat{\psi} and eigenvalues are \omega so rewriting eqn. (6) and (7) gives
 
-            $$ \bigg[ ( kU + lV ) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) \ \hat{\psi} \ \ \ \ \ (8) $$
+            \bigg[ ( kU + lV ) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) \ \hat{\psi} \ \ \ \ \ (8)
 
-            $$ \bigg[ ( kU + lV ) \frac{\partial}{\partial z} - k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) - l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \frac{\partial}{\partial z} \ \hat{\psi} \ \ \ \ \ (9) $$
+            \bigg[ ( kU + lV ) \frac{\partial}{\partial z} - k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) - l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \frac{\partial}{\partial z} \ \hat{\psi} \ \ \ \ \ (9)
             
         Hence,
 
-            $$ \boldsymbol{B}^{-1} \boldsymbol{A} \ \hat{\psi} = \omega \ \hat{\psi} \ \ \ \ (-H < z < 0) $$
+            \boldsymbol{B}^{-1} \boldsymbol{A} \ \hat{\psi} = \omega \ \hat{\psi} \ \ \ \ (-H < z < 0)
 
-            $$ \boldsymbol{D}^{-1} \boldsymbol{C} \ \hat{\psi} = \omega \ \hat{\psi} \ \ \ \ \ (z = 0, -H) $$
+            \boldsymbol{D}^{-1} \boldsymbol{C} \ \hat{\psi} = \omega \ \hat{\psi} \ \ \ \ \ (z = 0, -H)
 
         where
 
-            $$ \boldsymbol{A} = (kU + lV) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) $$
+            \boldsymbol{A} = (kU + lV) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg)
 
-            $$ \boldsymbol{B} = \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 $$
+            \boldsymbol{B} = \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2
 
-            $$ \boldsymbol{C} = (kU + lV) \frac{\partial}{\partial z} - k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) - l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) $$
+            \boldsymbol{C} = (kU + lV) \frac{\partial}{\partial z} - k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) - l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg)
 
-            $$ \boldsymbol{D} = \frac{\partial}{\partial z} $$
+            \boldsymbol{D} = \frac{\partial}{\partial z}
             
         Discretizing the second derivative term gives
 
-            $$ \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} \ \hat{\psi} = \frac{\partial}{\partial z} \bigg( \frac{f^2}{N^2} \bigg) \frac{\partial \hat{\psi}}{\partial z} + \frac{f^2}{N^2} \frac{\partial^2 \hat{\psi}}{\partial z^2} \\ = \frac{f^2}{\delta_n} \bigg( \frac{1}{N_{n-1}^2} - \frac{1}{N_n^2} \bigg) \frac{1}{2} \bigg( \frac{\partial \hat{\psi}}{\partial z} \bigg|_n + \frac{\partial \hat{\psi}}{\partial z} \bigg|_{n-1} \bigg) + \frac{f^2}{2} \bigg( \frac{1}{N_n^2} + \frac{1}{N_{n-1}^2} \bigg) \frac{1}{\delta_n} \bigg( \frac{\partial \hat{\psi}}{\partial z} \bigg|_{n-1} - \frac{\partial \hat{\psi}}{\partial z} \bigg|_n \bigg) \\ = \frac{f^2}{\delta_n} \bigg( \frac{1}{N_{n-1}^2} - \frac{1}{N_n^2} \bigg) \frac{1}{2} \bigg( \frac{\hat{\psi}_n - \hat{\psi}_{n+1}}{\Delta_n} + \frac{\hat{\psi}_{n-1} - \hat{\psi}_n}{\Delta_{n-1}} \bigg) + \frac{f^2}{2} \bigg( \frac{1}{N_n^2} + \frac{1}{N_{n-1}^2} \bigg) \frac{1}{\delta_n} \bigg( \frac{\hat{\psi}_{n-1} - \hat{\psi}_n}{\Delta_{n-1}} - \frac{\hat{\psi}_n - \hat{\psi}_{n+1}}{\Delta_n} \bigg) \\ = \frac{f^2}{\delta_n} \bigg[ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg] $$
+            \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} \ \hat{\psi} = \frac{\partial}{\partial z} \bigg( \frac{f^2}{N^2} \bigg) \frac{\partial \hat{\psi}}{\partial z} + \frac{f^2}{N^2} \frac{\partial^2 \hat{\psi}}{\partial z^2} \\ = \frac{f^2}{\delta_n} \bigg( \frac{1}{N_{n-1}^2} - \frac{1}{N_n^2} \bigg) \frac{1}{2} \bigg( \frac{\partial \hat{\psi}}{\partial z} \bigg|_n + \frac{\partial \hat{\psi}}{\partial z} \bigg|_{n-1} \bigg) + \frac{f^2}{2} \bigg( \frac{1}{N_n^2} + \frac{1}{N_{n-1}^2} \bigg) \frac{1}{\delta_n} \bigg( \frac{\partial \hat{\psi}}{\partial z} \bigg|_{n-1} - \frac{\partial \hat{\psi}}{\partial z} \bigg|_n \bigg) \\ = \frac{f^2}{\delta_n} \bigg( \frac{1}{N_{n-1}^2} - \frac{1}{N_n^2} \bigg) \frac{1}{2} \bigg( \frac{\hat{\psi}_n - \hat{\psi}_{n+1}}{\Delta_n} + \frac{\hat{\psi}_{n-1} - \hat{\psi}_n}{\Delta_{n-1}} \bigg) + \frac{f^2}{2} \bigg( \frac{1}{N_n^2} + \frac{1}{N_{n-1}^2} \bigg) \frac{1}{\delta_n} \bigg( \frac{\hat{\psi}_{n-1} - \hat{\psi}_n}{\Delta_{n-1}} - \frac{\hat{\psi}_n - \hat{\psi}_{n+1}}{\Delta_n} \bigg) \\ = \frac{f^2}{\delta_n} \bigg[ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg]
             
-        so for the interior ocean $(0 < z < H)$, eqn. $(8)$ becomes
+        so for the interior ocean (0 < z < H), eqn. (8) becomes
 
-            $$ (kU_n + lV_n) \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg] + \bigg( k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg) \hat{\psi}_n = \omega \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N^2_{n-1} \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg] $$
+            (kU_n + lV_n) \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg] + \bigg( k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg) \hat{\psi}_n = \omega \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N^2_{n-1} \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg]
             
-        Thus, for $\hat{\psi}_{n-1} :$
+        Thus, for \hat{\psi}_{n-1} :
 
-            $$ (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1} $$
+            (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1}
 
-        and $\hat{\psi}_n :$
+        and \hat{\psi}_n :
 
-            $$ (kU_n + lV_n) \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} + k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg] \hat{\psi}_n = \omega \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} \hat{\psi}_n $$
+            (kU_n + lV_n) \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} + k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg] \hat{\psi}_n = \omega \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} \hat{\psi}_n
 
-        and $\hat{\psi}_{n+1} :$
+        and \hat{\psi}_{n+1} :
 
-            $$ (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1} $$
+            (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1}
             
         where
 
-            $$ \frac{\partial Q}{\partial x} \bigg|_n = \frac{f^2}{\delta_n} \bigg\{ \frac{V_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) V_n + \frac{V_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} $$
+            \frac{\partial Q}{\partial x} \bigg|_n = \frac{f^2}{\delta_n} \bigg\{ \frac{V_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) V_n + \frac{V_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\}
 
-            $$ \frac{\partial Q}{\partial y} \bigg|_n = \beta - \frac{f^2}{\delta_n} \bigg\{ \frac{U_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) U_n + \frac{U_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} $$
+            \frac{\partial Q}{\partial y} \bigg|_n = \beta - \frac{f^2}{\delta_n} \bigg\{ \frac{U_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) U_n + \frac{U_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\}
             
-        At the boundaries, eqn. $(9)$ becomes
+        At the boundaries, eqn. (9) becomes
 
-            $$ \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{\hat{\psi}_0 - \hat{\psi}_1}{\Delta_0} - \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \frac{\hat{\psi}_1 + \hat{\psi}_0}{2} = \omega \frac{\hat{\psi}_0 - \hat{\psi}_1}{\Delta_0} $$
+            \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{\hat{\psi}_0 - \hat{\psi}_1}{\Delta_0} - \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \frac{\hat{\psi}_1 + \hat{\psi}_0}{2} = \omega \frac{\hat{\psi}_0 - \hat{\psi}_1}{\Delta_0}
 
-        Therefore at the surface $\psi_0 :$
+        Therefore at the surface \psi_0 :
 
-            $$ \bigg[ \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{1}{\Delta_0} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_0 = \omega \frac{1}{\Delta_0} \hat{\psi}_0 $$
+            \bigg[ \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{1}{\Delta_0} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_0 = \omega \frac{1}{\Delta_0} \hat{\psi}_0
+            
+        and \psi_1 :
 
-        and $\psi_1 :$
+            \bigg[ \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{-1}{\Delta_0} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_1 = \omega \frac{-1}{\Delta_0} \hat{\psi}_1
 
-            $$ \bigg[ \bigg( k \frac{U_0 + U_1}{2} + l \frac{V_0 + V_1}{2} \bigg) \frac{-1}{\Delta_0} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_0 - U_1}{\Delta_0} - \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial y} \bigg) + l \bigg( \frac{V_0 - V_1}{\Delta_0} + \frac{N_0^2}{f} \frac{\partial \eta_s}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_1 = \omega \frac{-1}{\Delta_0} \hat{\psi}_1 $$
+        and the same applies for the bottom \psi_{J-1} :
 
-        and the same applies for the bottom $\psi_{J-1} :$
+            \bigg[ \bigg( k \frac{U_{J-1} + U_J}{2} + l \frac{V_{J-1} + V_J}{2} \bigg) \frac{1}{\Delta_{J-1}} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_{J-1} - U_J}{\Delta_{J-1}} - \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial y} \bigg) + l \bigg( \frac{V_{J-1} - V_J}{\Delta_{J-1}} + \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_{J-1} = \omega \frac{1}{\Delta_{J-1}} \hat{\psi}_{J-1}
 
-            $$ \bigg[ \bigg( k \frac{U_{J-1} + U_J}{2} + l \frac{V_{J-1} + V_J}{2} \bigg) \frac{1}{\Delta_{J-1}} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_{J-1} - U_J}{\Delta_{J-1}} - \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial y} \bigg) + l \bigg( \frac{V_{J-1} - V_J}{\Delta_{J-1}} + \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_{J-1} = \omega \frac{1}{\Delta_{J-1}} \hat{\psi}_{J-1} $$
+        and \psi_J :
 
-        and $\psi_J :$
-
-            $$ \bigg[ \bigg( k \frac{U_{J-1} + U_J}{2} + l \frac{V_{J-1} + V_J}{2} \bigg) \frac{-1}{\Delta_{J-1}} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_{J-1} - U_J}{\Delta_{J-1}} - \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial y} \bigg) + l \bigg( \frac{V_{J-1} - V_J}{\Delta_{J-1}} + \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_J = \omega \frac{-1}{\Delta_{J-1}} \hat{\psi}_J $$
+            \bigg[ \bigg( k \frac{U_{J-1} + U_J}{2} + l \frac{V_{J-1} + V_J}{2} \bigg) \frac{-1}{\Delta_{J-1}} - \frac{1}{2} \bigg\{ k \bigg( \frac{U_{J-1} - U_J}{\Delta_{J-1}} - \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial y} \bigg) + l \bigg( \frac{V_{J-1} - V_J}{\Delta_{J-1}} + \frac{N_{J-1}^2}{f} \frac{\partial \eta_b}{\partial x} \bigg) \bigg\} \bigg] \ \hat{\psi}_J = \omega \frac{-1}{\Delta_{J-1}} \hat{\psi}_J
     
     
         Parameters
@@ -484,7 +484,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         #             G[n, n+1] = 1.
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                            k=num, which='LI', ncv=nz, maxiter=10*nz )  # default returns 6 eigenvectors
+                                            k=num, which='LI', ncv=ncv, maxiter=itera )  # default returns 6 eigenvectors
 #         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
 #                                  which='LI', sigma=1e1j, ncv=20 )
                 
