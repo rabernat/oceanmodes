@@ -6,6 +6,7 @@ import numpy as np
 from scipy import fftpack as fft
 from scipy.sparse import lil_matrix, csc_matrix
 from scipy.sparse.linalg import eigs, inv
+import warnings
 
 def _maybe_truncate_above_topography(z, f):
     """Return truncated versions of z and f if f is masked or nan.
@@ -176,7 +177,7 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
+def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
                                          sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic neutral modes from a profile of 
         buoyancy frequency truncated at the bottom.
@@ -184,10 +185,11 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, 
     nz_orig = len(z)
     z, N2 = _maybe_truncate_above_topography(z, N2)
     return _instability_analysis_from_N2_profile_raw(
-                                    z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort, num, depth=depth, **kwargs)
+                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
+                                    sort=sort, num=num, depth=depth, **kwargs)
 
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
-                                              sort='LI', num=4, depth=None, ncv=100, itera=1000, **kwargs):
+def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
+                                              sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
 
@@ -411,9 +413,6 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     #     G[n, n+1] = f**2/dzc[n] / N2[n] / dzf[n]
     ###################
     
-    k = fft.fftshift( fft.fftfreq(Nx, dx) )
-    l = fft.fftshift( fft.fftfreq(Ny, dy) )
-    
     for j in range(len(l)):
         for i in range(len(k)):
         
@@ -482,9 +481,28 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         #             G[n, n-1] = 1.
         #             G[n, n] = 1.
         #             G[n, n+1] = 1.
+        
+            # read in kwargs if any
+            if len(kwargs) > 0:
+                errstr = 'You have defined additional parameters for scipy.sparse.linalg.eigs'
+                warnings.warn(errstr)
+                for key, value in kwargs.iteritems():
+                    if key == 'num_Lanczos':
+                        num_Lanczos = value
+                    elif key == 'iteration':
+                        iteration = value
+                    elif key == 'v0':
+                        v0 = value
+                    elif key == 'tol':
+                        tol = value
+            else:
+                v0 = None
+                tol = 0
+                num_Lanczos = 100
+                iteration = 1000
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                            k=num, which='LI', ncv=ncv, maxiter=itera )  # default returns 6 eigenvectors
+                                            k=num, which='LI', ncv=num_Lanczos, maxiter=iteration )  # default returns 6 eigenvectors
 #         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
 #                                  which='LI', sigma=1e1j, ncv=20 )
                 
@@ -510,5 +528,5 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     psi = psi[:, p]
     
     # return the first 'num' leading modes
-    return k, l, zf, omega1d[p], omega[:num], psi[:, :num]
+    return zf, omega1d[p], omega[:num], psi[:, :num]
     
