@@ -177,7 +177,7 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
+def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah=0.,
                                          sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic neutral modes from a profile of 
         buoyancy frequency truncated at the bottom.
@@ -185,10 +185,10 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
     nz_orig = len(z)
     z, N2 = _maybe_truncate_above_topography(z, N2)
     return _instability_analysis_from_N2_profile_raw(
-                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
+                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
                                     sort=sort, num=num, depth=depth, **kwargs)
 
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, 
+def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
                                               sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
@@ -449,9 +449,12 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
             # 0 < n < nz (interior)
             ################
             for n in range(1,nz):
-
-                R = k[i] * ubar[n] + l[j] * vbar[n] 
+                
                 K2 = k[i]**2 + l[j]**2
+                if Ah == 0.:
+                    R = k[i] * ubar[n] + l[j] * vbar[n]
+                else:
+                    R = k[i] * ubar[n] + l[j] * vbar[n] - 1j * k[i] * Ah * np.sqrt(K2)
                 bf = f0**2 * dzc[n-1]**-1
                 b_1 = N2[n-1] * dzf[n-1]
                 b = N2[n] * dzf[n]
@@ -498,8 +501,8 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
             else:
                 v0 = None
                 tol = 0
-                num_Lanczos = 100
-                iteration = 1000
+                num_Lanczos = nz
+                iteration = 10*nz
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
                                             k=num, which='LI', ncv=num_Lanczos, maxiter=iteration )  # default returns 6 eigenvectors

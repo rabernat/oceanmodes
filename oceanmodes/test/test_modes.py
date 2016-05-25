@@ -5,6 +5,7 @@ from builtins import *
 import numpy as np
 import unittest
 import oceanmodes as modes
+from scipy import fftpack as fft
 #reload(modes)
 
 #############
@@ -124,6 +125,8 @@ class TestLinearInstability(unittest.TestCase):
         Ny = 1
         dx = .1
         dy = .1
+        k = fft.fftshift( fft.fftfreq(Nx, dx) )
+        l = fft.fftshift( fft.fftfreq(Ny, dy) )
         ubar = np.zeros((nz+1, 1))
         vbar = np.zeros((nz+1, 1))
         #ubar = 1e-2 * np.ones_like(zin)
@@ -134,13 +137,13 @@ class TestLinearInstability(unittest.TestCase):
         #etay = np.array([1e-1*beta, beta])
 
         with self.assertRaises(ValueError):
-            k, l, z, max_growth_rate, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
-                zin, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=zin[-5]
+            z, max_growth_rate, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
+                zin, N2, f0, beta, k, l, ubar, vbar, etax, etay, depth=zin[-5]
             )
 
         # no error expected
-        k, l, z, max_growth_rate, growth_rate, vertical_mode = modes.instability_analysis_from_N2_profile(
-                zin, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, depth=1.1
+        z, max_growth_rate, growth_rate, vertical_mode = modes.instability_analysis_from_N2_profile(
+                zin, N2, f0, beta, k, l, ubar, vbar, etax, etay, depth=1.1
         )
 
     def test_linear_instability_args(self):
@@ -152,17 +155,23 @@ class TestLinearInstability(unittest.TestCase):
         beta = 1e-6
         etax = np.array([1e-1*beta, beta])
         etay = np.array([1e-1*beta, beta])
+        Nx = 1
+        Ny = 1
+        dx = .1
+        dy = .1
+        k = fft.fftshift( fft.fftfreq(Nx, dx) )
+        l = fft.fftshift( fft.fftfreq(Ny, dy) )
 
         ###########
         # check for unequal lengths of arrays
         ###########
         with self.assertRaises(ValueError):
-            _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-                depth[1:], N2, 1., beta, 1, 1, 1e-1, 1e-1, ubar, vbar, etax, etay
+            _, _, _, _ = modes.instability_analysis_from_N2_profile(
+                depth[1:], N2, 1., beta, k, l, ubar, vbar, etax, etay
             )
         with self.assertRaises(ValueError):
-            _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-                depth, N2[1:], 1., beta, 1, 1, 1e-1, 1e-1, ubar, vbar, etax, etay
+            _, _, _, _ = modes.instability_analysis_from_N2_profile(
+                depth, N2[1:], 1., beta, k ,l, ubar, vbar, etax, etay
             )
         #with self.assertRaises(ValueError):
         #    _, _, _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
@@ -172,12 +181,18 @@ class TestLinearInstability(unittest.TestCase):
         depth_non_monotonic = depth
         depth_non_monotonic[0] = 5
         # check for non-monotonic profile
+        Nx = 50
+        Ny = 50
+        dx = 1e-1
+        dy = 1e-1
+        k = fft.fftshift( fft.fftfreq(Nx, dx) )
+        l = fft.fftshift( fft.fftfreq(Ny, dy) )
         with self.assertRaises(ValueError) as cm:
-            _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-                depth_non_monotonic, N2, 1., beta, 50, 50, 1e-1, 1e-1, ubar, vbar, etax, etay
+            _, _, _, _ = modes.instability_analysis_from_N2_profile(
+                depth_non_monotonic, N2, 1., beta, k, l, ubar, vbar, etax, etay
             )
 
-    def test_Eady(self, atol=5e-2, nz=20):
+    def test_Eady(self, atol=5e-2, nz=20, Ah=0.):
         """ Eady setup
         """
         ###########
@@ -192,14 +207,16 @@ class TestLinearInstability(unittest.TestCase):
         Ny = 1
         dx = 1e-1
         dy = 1e-1
+        k = fft.fftshift( fft.fftfreq(Nx, dx) )
+        l = fft.fftshift( fft.fftfreq(Ny, dy) )
         vbar = np.zeros(nz+1)
         ubar = zin
         etax = np.zeros(2)
         etay = np.zeros(2)
 
-        k, l, z, max_growth_rate, growth_rate, vertical_modes = \
+        z, max_growth_rate, growth_rate, vertical_modes = \
             modes.instability_analysis_from_N2_profile(
-                .5*(zin[1:]+zin[:-1]), N2, f0, beta, Nx, Ny, dx, dy,
+                .5*(zin[1:]+zin[:-1]), N2, f0, beta, k, l,
                 ubar, vbar, etax, etay, depth=1., sort='LI', num=2
         )
 
