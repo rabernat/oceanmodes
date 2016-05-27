@@ -6,6 +6,7 @@ import numpy as np
 from scipy import fftpack as fft
 from scipy.sparse import lil_matrix, csc_matrix
 from scipy.sparse.linalg import eigs, inv
+import warnings
 
 def _maybe_truncate_above_topography(z, f):
     """Return truncated versions of z and f if f is masked or nan.
@@ -176,22 +177,12 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
+def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah=0.,
                                          sort='LI', num=4, depth=None, **kwargs):
-    """Calculate baroclinic neutral modes from a profile of 
-        buoyancy frequency truncated at the bottom.
-    """
-    nz_orig = len(z)
-    z, N2 = _maybe_truncate_above_topography(z, N2)
-    return _instability_analysis_from_N2_profile_raw(
-                                    z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, sort, num, depth=depth, **kwargs)
-
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, ubar, vbar, etax, etay, 
-                                              sort='LI', num=4, depth=None, ncv=100, itera=1000, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
 
-            \frac{\partial q}{\partial t} + \boldsymbol{U} \cdot \nabla q + \boldsymbol{u} \cdot \nabla Q = 0 \ \ \ \ \ (1)
+            \frac{\partial q}{\partial t} + \boldsymbol{U} \cdot \nabla q + \boldsymbol{u} \cdot \nabla Q = Ah \nabla^2 q \ \ \ \ \ (1)
             
         with the boundary conditions of
 
@@ -225,10 +216,10 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             
         so eqn. (1) becomes
 
-            -i \omega (-K^2 + \Gamma) \ \hat{\psi} + ik U (-K^2 + \Gamma) \ \hat{\psi} + il V (-K^2 + \Gamma) \ \hat{\psi} - il \frac{\partial Q}{\partial x} \ \hat{\psi} + ik \frac{\partial Q}{\partial y} \ \hat{\psi} = 0
+            -i \omega (-K^2 + \Gamma) \ \hat{\psi} + ik U (-K^2 + \Gamma) \ \hat{\psi} + il V (-K^2 + \Gamma) \ \hat{\psi} - il \frac{\partial Q}{\partial x} \ \hat{\psi} + ik \frac{\partial Q}{\partial y} \ \hat{\psi} = - Ah K^2 \hat{\psi}
 
-            \therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega) (\Gamma - K^2) \ \hat{\psi} = - \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \ \hat{\psi} \ \ \ \ \ (6)
-            
+            \therefore \ \ (\boldsymbol{K} \cdot \boldsymbol{U} - \omega - i Ah K^2) (\Gamma - K^2) \ \hat{\psi} = - \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \ \hat{\psi} \ \ \ \ \ (6)
+        
         and eqn. (2) becomes
 
             -i \omega f \frac{\partial \hat{\psi}}{\partial z} + ikf U \frac{\partial \hat{\psi}}{\partial z} + ilf V \frac{\partial \hat{\psi}}{\partial z} - il \bigg( f \frac{\partial V}{\partial z} + N^2 \frac{\partial \eta}{\partial x} \bigg) \ \hat{\psi} + ik \bigg( -f \frac{\partial U}{\partial z} + N^2 \frac{\partial \eta}{\partial y} \bigg) \ \hat{\psi} = 0
@@ -237,7 +228,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             
         Now the eigenfunctions are \hat{\psi} and eigenvalues are \omega so rewriting eqn. (6) and (7) gives
 
-            \bigg[ ( kU + lV ) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) \ \hat{\psi} \ \ \ \ \ (8)
+            \bigg[ ( kU + lV - i Ah K^2 ) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) \ \hat{\psi} \ \ \ \ \ (8)
 
             \bigg[ ( kU + lV ) \frac{\partial}{\partial z} - k \bigg( \frac{\partial U}{\partial z} - \frac{N^2}{f} \frac{\partial \eta}{\partial y} \bigg) - l \bigg( \frac{\partial V}{\partial z} + \frac{N^2}{f} \frac{\partial \eta}{\partial x} \bigg) \bigg] \ \hat{\psi} = \omega \frac{\partial}{\partial z} \ \hat{\psi} \ \ \ \ \ (9)
             
@@ -249,7 +240,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
 
         where
 
-            \boldsymbol{A} = (kU + lV) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg)
+            \boldsymbol{A} = (kU + lV - i Ah K^2) \bigg( \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2 \bigg) + \bigg( k \frac{\partial Q}{\partial y} - l \frac{\partial Q}{\partial x} \bigg)
 
             \boldsymbol{B} = \frac{\partial}{\partial z} \frac{f^2}{N^2} \frac{\partial}{\partial z} - K^2
 
@@ -263,19 +254,19 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             
         so for the interior ocean (0 < z < H), eqn. (8) becomes
 
-            (kU_n + lV_n) \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg] + \bigg( k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg) \hat{\psi}_n = \omega \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N^2_{n-1} \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg]
+            (kU_n + lV_n - i Ah K^2) \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N_{n-1}^2 \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg] + \bigg( k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg) \hat{\psi}_n = \omega \bigg[ \frac{f^2}{\delta_n} \bigg\{ \frac{\hat{\psi}_{n+1}}{N_n^2 \Delta_n} - \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) \hat{\psi}_n + \frac{\hat{\psi}_{n-1}}{N^2_{n-1} \Delta_{n-1}} \bigg\} - K^2 \hat{\psi}_n \bigg]
             
         Thus, for \hat{\psi}_{n-1} :
 
-            (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1}
+            (kU_n + lV_n - i Ah K^2) \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_{n-1}^2 \Delta_{n-1}} \hat{\psi}_{n-1}
 
         and \hat{\psi}_n :
 
-            (kU_n + lV_n) \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} + k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg] \hat{\psi}_n = \omega \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} \hat{\psi}_n
+            (kU_n + lV_n - i Ah K^2) \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} + k \frac{\partial Q}{\partial y} \bigg|_n - l \frac{\partial Q}{\partial x} \bigg|_n \bigg] \hat{\psi}_n = \omega \bigg\{ - \frac{f^2}{\delta_n} \bigg( \frac{1}{N_n^2 \Delta_n} + \frac{1}{N_{n-1}^2 \Delta_{n-1}} \bigg) - K^2 \bigg\} \hat{\psi}_n
 
         and \hat{\psi}_{n+1} :
 
-            (kU_n + lV_n) \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1}
+            (kU_n + lV_n - i Ah K^2) \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1} = \omega \frac{f^2}{\delta_n} \frac{1}{N_n^2 \Delta_n} \hat{\psi}_{n+1}
             
         where
 
@@ -322,8 +313,10 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             The topographic horizontal gradient at the top and bottom.
         B : array_like
             The background buoyancy
-        Nx, Ny, dx, dy: float
+        k, l : float
             Parameters to define the horizontal wavenumber
+        Ah : float
+            Lateral diffusivity
         sort: string, optional
             Sorts the eigenvalues depending on the given argument
         num: integer, optional
@@ -332,7 +325,9 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             Total water column depth. If missing will be inferred from z.
         kwargs : optional
             Additional parameters to pass to scipy.sparse.linalg.eigs for
-            eigenvalue computation
+            eigenvalue computation (Need to define all four parameters, i.e.
+            v0, number of Lanczos vectors, maximum iterations, 
+            and tolerance of accuracy of eigen solutions)
     
     
         Returns
@@ -345,9 +340,15 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             eigenvalue matrix reshaped into a 1-D array (imaginary part is the growth rate)
         omega: array_like
             eigenvalues (imaginary part is the growth rate)
-        k, l : array_like
-            inverse horizontal wavelengths
     """
+    nz_orig = len(z)
+    z, N2 = _maybe_truncate_above_topography(z, N2)
+    return _instability_analysis_from_N2_profile_raw(
+                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+                                    sort=sort, num=num, depth=depth, **kwargs)
+
+def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+                                              sort='LI', num=4, depth=None, **kwargs):
     nz = len(z)
 
     ### vertical discretization ###
@@ -411,13 +412,13 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     #     G[n, n+1] = f**2/dzc[n] / N2[n] / dzf[n]
     ###################
     
-    k = fft.fftshift( fft.fftfreq(Nx, dx) )
-    l = fft.fftshift( fft.fftfreq(Ny, dy) )
-    
     for j in range(len(l)):
         for i in range(len(k)):
-        
-            L = lil_matrix((nz+1, nz+1), dtype=np.float64)
+            
+            if Ah == 0.:
+                L = lil_matrix((nz+1, nz+1), dtype=np.float64)
+            else:
+                L = lil_matrix((nz+1, nz+1), dtype=np.complex128)
             G = L.copy()
 
             ################
@@ -428,10 +429,14 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             S = .5 * ( k[i] * ( (ubar[0]-ubar[1])*D - N2[0]/f0 * etay[0] )
                                                 + l[j] * ( (vbar[0]-vbar[1])*D + N2[0]/f0 * etax[0] ) )
 
-            L[0, 0] = R - S * D**-1
-            L[0, 1] = R * (-1.) - S * D**-1
-            G[0, 0] = 1.
-            G[0, 1] = - 1.
+            L[0, 0] = R * D - S
+            L[0, 1] = R * (-D) - S
+            G[0, 0] = D
+            G[0, 1] = - D
+            # L[0, 0] = R - S * D**-1
+            # L[0, 1] = R * (-1.) - S * D**-1
+            # G[0, 0] = 1.
+            # G[0, 1] = - 1.
 
             ################
             # n = nz (bottom)
@@ -441,18 +446,25 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
             S = .5 * ( k[i] * ( (ubar[nz-1]-ubar[nz])*D - N2[nz-1]/f0 * etay[1] )
                                                 + l[j] * ( (vbar[nz-1]-vbar[nz])*D + N2[nz-1]/f0 * etax[1] ) )
 
-            L[nz, nz-1] = R - S * D**-1
-            L[nz, nz] = R * (-1.) - S * D**-1
-            G[nz, nz-1] = 1.
-            G[nz, nz] = - 1.
+            L[nz, nz-1] = R * D - S
+            L[nz, nz] = R * (-D) - S
+            G[nz, nz-1] = D
+            G[nz, nz] = - D
+            # L[nz, nz-1] = R - S * D**-1
+            # L[nz, nz] = R * (-1.) - S * D**-1
+            # G[nz, nz-1] = 1.
+            # G[nz, nz] = - 1.
 
             ################
             # 0 < n < nz (interior)
             ################
             for n in range(1,nz):
-
-                R = k[i] * ubar[n] + l[j] * vbar[n] 
+                
                 K2 = k[i]**2 + l[j]**2
+                if Ah == 0.:
+                    R = k[i] * ubar[n] + l[j] * vbar[n]
+                else:
+                    R = k[i] * ubar[n] + l[j] * vbar[n] - 1j * Ah * K2
                 bf = f0**2 * dzc[n-1]**-1
                 b_1 = N2[n-1] * dzf[n-1]
                 b = N2[n] * dzf[n]
@@ -482,9 +494,28 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
         #             G[n, n-1] = 1.
         #             G[n, n] = 1.
         #             G[n, n+1] = 1.
+        
+            # read in kwargs if any
+            if len(kwargs) == 4:
+                errstr = 'You have defined additional parameters for scipy.sparse.linalg.eigs'
+                warnings.warn(errstr)
+                for key, value in kwargs.iteritems():
+                    if key == 'num_Lanczos':
+                        num_Lanczos = value
+                    elif key == 'iteration':
+                        iteration = value
+                    elif key == 'v0':
+                        v0 = value
+                    elif key == 'tol':
+                        tol = value
+            else:
+                v0 = None
+                tol = 0
+                num_Lanczos = nz
+                iteration = 10*nz
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                            k=num, which='LI', ncv=ncv, maxiter=itera )  # default returns 6 eigenvectors
+                                            k=num, which='LI', ncv=num_Lanczos, maxiter=iteration )  # default returns 6 eigenvectors
 #         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
 #                                  which='LI', sigma=1e1j, ncv=20 )
                 
@@ -510,5 +541,5 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, Nx, Ny, dx, dy, u
     psi = psi[:, p]
     
     # return the first 'num' leading modes
-    return k, l, zf, omega1d[p], omega[:num], psi[:, :num]
+    return zf, omega1d[p], omega[:num], psi[:, :num]
     
