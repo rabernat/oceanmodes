@@ -177,7 +177,7 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah=0.,
+def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar, etax, etay, Ah=0.,
                                          sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
@@ -297,7 +297,7 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
     
         Parameters
         ----------
-        z : array_like
+        zN2 : array_like
             The depths at which N2 is given. Starts shallow, increases
             positive downward.
         N2 : array_like
@@ -315,6 +315,12 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
             The background buoyancy
         k, l : float
             Parameters to define the horizontal wavenumber
+        zU : array_like
+            The depths at which ubar/vbar are given. Starts shallow, increases
+            positive downward.
+        ubar, vbar : array_like
+            Time averaged horizontal velocitites [units m/s]. Points below topography
+            should be masked or nan.
         Ah : float
             Lateral diffusivity
         sort: string, optional
@@ -332,24 +338,46 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
     
         Returns
         -------
-        zf : array_like
+        zpsi : array_like
             The depths at which phi is defined. Different from z.
         psi : array_like
             eigenvectors
-        omega_1d: array_like
-            eigenvalue matrix reshaped into a 1-D array (imaginary part is the growth rate)
         omega: array_like
             eigenvalues (imaginary part is the growth rate)
     """
-    nz_orig = len(z)
-    z, N2 = _maybe_truncate_above_topography(z, N2)
+    nz_orig = len(zN2)
+    zc, N2 = _maybe_truncate_above_topography(zN2, N2)
+    dzc = np.hstack(np.diff(zc))
+    zf, ubar = _maybe_truncate_above_topography(zU, ubar)
+    zf, vbar = _maybe_truncate_above_topography(zU, vbar)
+
+    # make sure z is increasing
+    if not np.all(dzc > 0):
+        raise ValueError('z should be monotonically increasing')
+    if depth is None:
+        depth = zf[-1]
+    else:
+        if depth < zf[-1]:
+            raise ValueError('depth should not be less than maximum z')
+    
+    if len(ubar) > len(vbar):
+        ubar = ubar[:len(vbar)]
+        zf = zf[:len(vbar)]
+    elif len(ubar) < len(vbar):
+        vbar = vbar[:len(ubar)]
+        zf = zf[:len(ubar)]
+    
+    if len(N2) > len(ubar)-1:
+        N2 = N2[:len(ubar)-1]
+        zc = zc[:len(ubar)-1]
+    
     return _instability_analysis_from_N2_profile_raw(
-                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+                                    zc, N2, f0, beta, k, l, zf, ubar, vbar, etax, etay, Ah,
                                     sort=sort, num=num, depth=depth, **kwargs)
 
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, vbar, etax, etay, Ah,
                                               sort='LI', num=4, depth=None, **kwargs):
-    nz = len(z)
+    nz = len(zc)
 
     ### vertical discretization ###
 
@@ -365,22 +393,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
 
     # just for notation's sake
     # (user shouldn't worry about discretization)
-    zc = z
     dzc = np.hstack(np.diff(zc))
-    # make sure z is increasing
-    if not np.all(dzc > 0):
-        raise ValueError('z should be monotonically increasing')
-    if depth is None:
-        depth = z[-1] + dzc[-1]/2
-    else:
-        if depth <= z[-1]:
-            raise ValueError('depth should not be less than maximum z')
-
-    dztop = zc[0]
-    dzbot = depth - zc[-1]
-
-    # put the phi points right between the N2 points
-    zf = np.hstack([0, 0.5*(zc[1:]+zc[:-1]), depth ])
     dzf = np.diff(zf)
     
     ##################
@@ -541,5 +554,5 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
     psi = psi[:, p]
     
     # return the first 'num' leading modes
-    return zf, omega1d[p], omega[:num], psi[:, :num]
+    return zf, omega[:num], psi[:, :num]
     
