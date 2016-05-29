@@ -173,7 +173,7 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
     #########
     # w = - 1/(Rd^2 * f0^2)
     #########
-    Rd = (-w)**-0.5 / f0
+    Rd = (-w)**-0.5 / np.absolute(f0)
 
     return zf, Rd, v
 
