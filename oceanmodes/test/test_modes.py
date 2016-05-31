@@ -87,11 +87,6 @@ class TestNeutralModes(unittest.TestCase):
             depth, N2, f0
         )
 
-        # make sure we got the right number of modes
-        # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
-        # compute them
-        #self.assertEqual(nz, len(def_radius))
-        # make sure the modes themselves have the right structure
         self.assertEqual(nz+1, bc_modes.shape[0],
             msg='modes array must the right shape')
 
@@ -130,12 +125,8 @@ class TestLinearInstability(unittest.TestCase):
         l = fft.fftshift( fft.fftfreq(Ny, dy) )
         ubar = np.zeros(nz+1)
         vbar = np.zeros(nz+1)
-        #ubar = 1e-2 * np.ones_like(zin)
-        #vbar = 1e-2 * np.ones_like(zin)
         etax = np.zeros(2)
         etay = np.zeros(2)
-        #etax = np.array([1e-1*beta, beta])
-        #etay = np.array([1e-1*beta, beta])
 
         with self.assertRaises(ValueError):
             z, growth_rate, vertical_modes = modes.instability_analysis_from_N2_profile(
@@ -174,10 +165,6 @@ class TestLinearInstability(unittest.TestCase):
             _, _, _ = modes.instability_analysis_from_N2_profile(
                 depth, N2[1:], 1., beta, k ,l, depth, ubar, vbar, etax, etay
             )
-        #with self.assertRaises(ValueError):
-        #    _, _, _, _, _, _, _, _ = modes.instability_analysis_from_N2_profile(
-        #        depth, N2, 1., beta, 50, 50, 1e-1, 1e-1, ubar[1:], vbar, etax, etay
-        #    )
 
         depth_non_monotonic = depth
         depth_non_monotonic[0] = 5
@@ -222,25 +209,12 @@ class TestLinearInstability(unittest.TestCase):
                 zin, ubar, vbar, etax, etay, depth=1., sort='LI', num=2
         )
 
-        ###################
-        # make sure we got the right number of modes
-        # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
-        # compute them
-        # self.assertEqual(nz, len(def_radius))
-        # make sure the modes themselves have the right structure
-        ###################
         self.assertEqual(nz+1, vertical_modes.shape[0],
             msg='modes array must be in the right shape')
 
         self.assertTrue(np.all( np.diff(
                     growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
-        #self.assertTrue(np.all( max_growth_rate == 0.),
             msg='imaginary part of modes should be descending')
-
-        #nmodes = len(def_radius)
-        #zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
-        #self.assertListEqual(list(range(nmodes)), list(zero_crossings),
-        #    msg='modes should have the correct number of zero crossings')
 
         mode_amplitude1 = (np.absolute(vertical_modes[:, 0])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude1),
@@ -249,10 +223,6 @@ class TestLinearInstability(unittest.TestCase):
         mode_amplitude2 = (np.absolute(vertical_modes[:, 1])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude2),
             msg='mode2 should be normalized to amplitude of 1 at all horizontal wavenumber points')
-
-        #mode_amplitude3 = (np.absolute(vertical_modes[:, 2])).sum()
-        #self.assertTrue(np.allclose(1., mode_amplitude3),
-        #    msg='mode3 should be normalized to amplitude of 1')
 
         #########
         # Analytical solution for Eady growth rate
@@ -350,25 +320,12 @@ class TestLinearInstability(unittest.TestCase):
         
         nz = len(z)
 
-        ###################
-        # make sure we got the right number of modes
-        # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
-        # compute them
-        # self.assertEqual(nz, len(def_radius))
-        # make sure the modes themselves have the right structure
-        ###################
         self.assertEqual(nz, vertical_modes.shape[0],
             msg='modes array must be in the right shape')
 
         self.assertTrue(np.all( np.diff(
                     growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
-        #self.assertTrue(np.all( max_growth_rate == 0.),
             msg='imaginary part of modes should be descending')
-
-        #nmodes = len(def_radius)
-        #zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
-        #self.assertListEqual(list(range(nmodes)), list(zero_crossings),
-        #    msg='modes should have the correct number of zero crossings')
 
         mode_amplitude1 = (np.absolute(vertical_modes[:, 0])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude1),
