@@ -266,3 +266,66 @@ class TestLinearInstability(unittest.TestCase):
 
         self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady, atol=atol),
             msg='The numerical growth rates should be close to the analytical Eady solution' )
+        
+    def test_OCCA_GulfStream(self, Ah=0.):
+        """ Actual profiles in the Gulf Stream region 
+             (@ 39.5N, 299.5E)
+        """
+        ###########
+        # prepare parameters for Eady
+        ###########
+        npz = np.load('../examples/OCCA_GulfStream.npz')
+        ubar = npz['u_at_Tpoints']
+        vbar = npz['v_at_Tpoints']
+        Rd = npz['Rossby_radii']
+        N2 = npz['N2']
+        z_u = npz['z_u']
+        z_N2 = -npz['z_N2']
+        f0 = npz['f0']
+        beta = npz['beta']
+        Nx = 100
+        Ny = 100
+        dx = 1e-1
+        dy = 1e-1
+        k = fft.fftshift( fft.fftfreq(Nx, dx) )
+        l = fft.fftshift( fft.fftfreq(Ny, dy) )
+        k = k[np.absolute(k) < 5.*Rd[1]**-1]
+        l = l[np.absolute(l) < 5.*Rd[1]**-1]
+        etax = np.zeros(2)
+        etay = np.zeros(2)
+
+        z, growth_rate, vertical_modes = \
+            modes.instability_analysis_from_N2_profile(
+                z_N2, N2, f0, beta, k, l,
+                z_u, ubar, vbar, etax, etay, sort='LI', num=2
+        )
+        
+        nz = len(z)
+
+        ###################
+        # make sure we got the right number of modes
+        # NOPE! don't want all the modes and scipy.sparse.linalg.eigs won't
+        # compute them
+        # self.assertEqual(nz, len(def_radius))
+        # make sure the modes themselves have the right structure
+        ###################
+        self.assertEqual(nz, vertical_modes.shape[0],
+            msg='modes array must be in the right shape')
+
+        self.assertTrue(np.all( np.diff(
+                    growth_rate.reshape((growth_rate.shape[0], len(k)*len(l))).imag.max(axis=1) ) <= 0.),
+        #self.assertTrue(np.all( max_growth_rate == 0.),
+            msg='imaginary part of modes should be descending')
+
+        #nmodes = len(def_radius)
+        #zero_crossings = np.abs(np.diff(np.sign(bc_modes), axis=0)/2).sum(axis=0)
+        #self.assertListEqual(list(range(nmodes)), list(zero_crossings),
+        #    msg='modes should have the correct number of zero crossings')
+
+        mode_amplitude1 = (np.absolute(vertical_modes[:, 0])**2).sum(axis=0)
+        self.assertTrue(np.allclose(1., mode_amplitude1),
+            msg='mode1 should be normalized to amplitude of 1 at all horizontal wavenumber points')
+
+        mode_amplitude2 = (np.absolute(vertical_modes[:, 1])**2).sum(axis=0)
+        self.assertTrue(np.allclose(1., mode_amplitude2),
+            msg='mode2 should be normalized to amplitude of 1 at all horizontal wavenumber points')
