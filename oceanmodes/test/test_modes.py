@@ -237,7 +237,7 @@ class TestLinearInstability(unittest.TestCase):
         self.assertTrue( np.allclose(growth_rate.imag[0, 0, :], growthEady, atol=atol),
             msg='The numerical growth rates should be close to the analytical Eady solution' )
         
-    def test_OCCA_GulfStream(self, Ah=0.):
+    def test_OCCA_GulfStream(self, Ah=0., atol=1e-8):
         """ Actual profiles in the Gulf Stream region 
              (@ 39.5N, 299.5E)
         """
@@ -301,14 +301,11 @@ class TestLinearInstability(unittest.TestCase):
             np.nan])
         f0 = 9.27671062527e-05
         beta = 1.76637107718e-11
-        Nx = 100
-        Ny = 100
-        dx = 1e-1
-        dy = 1e-1
+        Nx = 100; Ny = 1
+        dx = 1e3; dy = 1e3
         k = fft.fftshift( fft.fftfreq(Nx, dx) )
         l = fft.fftshift( fft.fftfreq(Ny, dy) )
         k = k[np.absolute(k) < 5.*Rd**-1]
-        l = l[np.absolute(l) < 5.*Rd**-1]
         etax = np.zeros(2)
         etay = np.zeros(2)
 
@@ -334,3 +331,20 @@ class TestLinearInstability(unittest.TestCase):
         mode_amplitude2 = (np.absolute(vertical_modes[:, 1])**2).sum(axis=0)
         self.assertTrue(np.allclose(1., mode_amplitude2),
             msg='mode2 should be normalized to amplitude of 1 at all horizontal wavenumber points')
+        
+        ##########
+        # Row corresponding to l=0 of growth mode
+        ##########
+        w_sol = np.array([1.09940514e-06,9.63383313e-07,8.32358326e-07,6.99704577e-07,
+           5.60854037e-07,4.16059352e-07,2.69400582e-07,1.57391758e-07,
+           1.57022966e-07,1.39924035e-07,1.00847043e-07,5.20661606e-08,
+           1.14405052e-07,1.90974306e-07,1.83088454e-07,3.63353900e-07,
+           5.49322650e-07,2.90420152e-07,1.50720341e-08,0.00000000e+00,
+           1.50720341e-08,2.90420152e-07,5.49322650e-07,3.63353900e-07,
+           1.83088454e-07,1.90974306e-07,1.14405052e-07,5.20661606e-08,
+           1.00847043e-07,1.39924035e-07,1.57022966e-07,1.57391758e-07,
+           2.69400582e-07,4.16059352e-07,5.60854037e-07,6.99704577e-07,
+           8.32358326e-07,9.63383313e-07,1.09940514e-06])
+        
+        self.assertTrue( np.allclose(growth_rate.imag[0, 0], w_sol, atol=atol),
+            msg='The OCCA numerical growth rates should be close to the solution' )
