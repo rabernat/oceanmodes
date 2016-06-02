@@ -43,7 +43,7 @@ class TestNeutralModes(unittest.TestCase):
         
         zg = np.arange(nz+1)
         g = np.ma.masked_array(g, zg==(nz-1))
-        g.mask[-1] = True
+        g.mask[-2] = True
         with self.assertRaises(ValueError):
             zt, ft, gt = modes.baroclinic._maybe_truncate_above_topography(z,f,g[:-1])
 
@@ -174,6 +174,16 @@ class TestLinearInstability(unittest.TestCase):
         with self.assertRaises(ValueError):
             _, _, _ = modes.instability_analysis_from_N2_profile(
                 depth, N2[1:], 1., beta, k ,l, depth, ubar, vbar, etax, etay
+            )
+        
+        with self.assertRaises(ValueError):
+            _, _, _ = modes.instability_analysis_from_N2_profile(
+                -depth, N2, 1., beta, k ,l, np.append(depth, float(nz+1)), ubar, vbar, etax, etay
+            )
+        
+        with self.assertRaises(ValueError):
+            _, _, _ = modes.instability_analysis_from_N2_profile(
+                depth, N2[1:], 1., beta, k ,l, -np.append(depth, float(nz+1)), ubar, vbar, etax, etay
             )
 
         depth_non_monotonic = depth

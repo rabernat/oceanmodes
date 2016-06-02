@@ -370,9 +370,6 @@ def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar
     dzf = np.hstack(np.diff(zf))
     ubar = UV[0]
     vbar = UV[1]
-    # make sure the arrays don't include nans
-    if np.isnan(N2).any() or np.isnan(ubar).any() or np.isnan(vbar).any():
-        raise ValueError('The arrays after truncation include NaNs')
     # make sure length of N2 is one shorter than velocities
     if len(N2) > len(ubar)-1:
         raise ValueError('N2 has the same or longer length than horizontal velocities')
