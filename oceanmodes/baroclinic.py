@@ -20,7 +20,13 @@ def _maybe_truncate_above_topography(z, *args):
             
         if ndata > 1 and n < ndata-1:
             if not args[n].shape == args[n+1].shape:
-                raise ValueError('All variables must have same length')
+                raise ValueError('All variables should have same length before truncation')
+            if not (np.ma.masked_invalid(args[n]).mask.all() 
+                    == np.ma.masked_invalid(args[n+1]).mask.all()):
+                raise ValueError('All variables must have same mask before truncation')
+            if not (np.ma.masked_invalid(args[n]).compressed().shape 
+                    == np.ma.masked_invalid(args[n+1]).compressed().shape):
+                raise ValueError('All variables must have same length after truncation')
 
         fm = np.ma.masked_invalid(args[n])
         
@@ -37,6 +43,7 @@ def _maybe_truncate_above_topography(z, *args):
             fout[n] = fm.compressed()
         else:
             fout = fm.compressed()
+   
     zout = z[~fm.mask]
     
     return zout, fout
@@ -360,16 +367,20 @@ def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar
     zc, N2 = _maybe_truncate_above_topography(zN2, N2)
     dzc = np.hstack(np.diff(zc))
     zf, UV = _maybe_truncate_above_topography(zU, ubar, vbar)
+    dzf = np.hstack(np.diff(zf))
     ubar = UV[0]
     vbar = UV[1]
+    # make sure the arrays don't include nans
+    if np.isnan(N2).any() or np.isnan(ubar).any() or np.isnan(vbar).any():
+        raise ValueError('The arrays after truncation include NaNs')
     # make sure length of N2 is one shorter than velocities
     if len(N2) > len(ubar)-1:
-        warnings.warn('N2 has the same or longer length than horizontal velocities')
-        N2 = N2[:len(ubar)-1]
-        zc = zc[:len(ubar)-1]
+        raise ValueError('N2 has the same or longer length than horizontal velocities')
     
     # make sure z is increasing
     if not np.all(dzc > 0):
+        raise ValueError('z should be monotonically increasing')
+    if not np.all(dzf > 0):
         raise ValueError('z should be monotonically increasing')
     if depth is None:
         depth = zf[-1]
