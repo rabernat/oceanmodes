@@ -8,26 +8,44 @@ from scipy.sparse import lil_matrix, csc_matrix
 from scipy.sparse.linalg import eigs, inv
 import warnings
 
-def _maybe_truncate_above_topography(z, f):
-    """Return truncated versions of z and f if f is masked or nan.
+def _maybe_truncate_above_topography(z, *args):
+    """Return truncated versions of z and arg if arg is masked or nan.
     """
+    ndata = len(args)
+    
     # checks on shapes of stuff
-    if not z.shape == f.shape:
-        raise ValueError('z and f must have the same length')
+    for n in range(ndata):
+        if not z.shape == args[n].shape:
+            raise ValueError('z and f must have the same length')
+            
+        if ndata > 1 and n < ndata-1:
+            if not args[n].shape == args[n+1].shape:
+                raise ValueError('All variables should have same length before truncation')
+            if not (np.ma.masked_invalid(args[n]).mask.all() 
+                    == np.ma.masked_invalid(args[n+1]).mask.all()):
+                raise ValueError('All variables must have same mask before truncation')
+            if not (np.ma.masked_invalid(args[n]).compressed().shape 
+                    == np.ma.masked_invalid(args[n+1]).compressed().shape):
+                raise ValueError('All variables must have same length after truncation')
 
-    fm = np.ma.masked_invalid(f)
-    if fm.mask.sum()==0:
-        return z, f
-
-    # check to make sure the mask is only at the bottom
-    #if not fm.mask[-1]:
-    #    raise ValueError('topography should be at the bottom of the column')
-    # the above check was redundant with this one
-    if fm.mask[-1] and np.diff(fm.mask).sum() != 1:
-        raise ValueError('topographic mask should be monotonic')
-
+        fm = np.ma.masked_invalid(args[n])
+        
+        # check to make sure the mask is only at the bottom
+        # if not fm.mask[-1]:
+        #     raise ValueError('topography should be at the bottom of the column')
+        # the above check was redundant with this one
+        if fm.mask[-1] and np.diff(fm.mask).sum() != 1:
+            raise ValueError('topographic mask should be monotonic')
+        
+        if ndata > 1:    
+            if n == 0:
+                fout = np.zeros((ndata, len(fm.compressed())))
+            fout[n] = fm.compressed()
+        else:
+            fout = fm.compressed()
+   
     zout = z[~fm.mask]
-    fout = fm.compressed()
+    
     return zout, fout
 
 def neutral_modes_from_N2_profile(z, N2, f0, depth=None, **kwargs):
@@ -173,11 +191,11 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
     #########
     # w = - 1/(Rd^2 * f0^2)
     #########
-    Rd = (-w)**-0.5 / f0
+    Rd = (-w)**-0.5 / np.absolute(f0)
 
     return zf, Rd, v
 
-def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah=0.,
+def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar, etax, etay, Ah=0.,
                                          sort='LI', num=4, depth=None, **kwargs):
     """Calculate baroclinic unstable modes from a profile of buoyancy frequency.
         Solves the eigenvalue problem
@@ -297,7 +315,7 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
     
         Parameters
         ----------
-        z : array_like
+        zN2 : array_like
             The depths at which N2 is given. Starts shallow, increases
             positive downward.
         N2 : array_like
@@ -315,8 +333,14 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
             The background buoyancy
         k, l : float
             Parameters to define the horizontal wavenumber
+        zU : array_like
+            The depths at which ubar/vbar are given. Starts shallow, increases
+            positive downward.
+        ubar, vbar : array_like
+            Time averaged horizontal velocitites [units m/s]. Points below topography
+            should be masked or nan.
         Ah : float
-            Lateral diffusivity
+            Lateral viscosity
         sort: string, optional
             Sorts the eigenvalues depending on the given argument
         num: integer, optional
@@ -332,24 +356,42 @@ def instability_analysis_from_N2_profile(z, N2, f0, beta, k, l, ubar, vbar, etax
     
         Returns
         -------
-        zf : array_like
+        zpsi : array_like
             The depths at which phi is defined. Different from z.
         psi : array_like
             eigenvectors
-        omega_1d: array_like
-            eigenvalue matrix reshaped into a 1-D array (imaginary part is the growth rate)
         omega: array_like
             eigenvalues (imaginary part is the growth rate)
     """
-    nz_orig = len(z)
-    z, N2 = _maybe_truncate_above_topography(z, N2)
+    nz_orig = len(zN2)
+    zc, N2 = _maybe_truncate_above_topography(zN2, N2)
+    dzc = np.hstack(np.diff(zc))
+    zf, UV = _maybe_truncate_above_topography(zU, ubar, vbar)
+    dzf = np.hstack(np.diff(zf))
+    ubar = UV[0]
+    vbar = UV[1]
+    # make sure length of N2 is one shorter than velocities
+    if len(N2) > len(ubar)-1:
+        raise ValueError('N2 has the same or longer length than horizontal velocities')
+    
+    # make sure z is increasing
+    if not np.all(dzc > 0):
+        raise ValueError('z should be monotonically increasing')
+    if not np.all(dzf > 0):
+        raise ValueError('z should be monotonically increasing')
+    if depth is None:
+        depth = zf[-1]
+    else:
+        if depth < zf[-1]:
+            raise ValueError('depth should not be less than maximum z')
+    
     return _instability_analysis_from_N2_profile_raw(
-                                    z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+                                    zc, N2, f0, beta, k, l, zf, ubar, vbar, etax, etay, Ah,
                                     sort=sort, num=num, depth=depth, **kwargs)
 
-def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar, etax, etay, Ah,
+def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, vbar, etax, etay, Ah,
                                               sort='LI', num=4, depth=None, **kwargs):
-    nz = len(z)
+    nz = len(zc)
 
     ### vertical discretization ###
 
@@ -365,52 +407,14 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
 
     # just for notation's sake
     # (user shouldn't worry about discretization)
-    zc = z
     dzc = np.hstack(np.diff(zc))
-    # make sure z is increasing
-    if not np.all(dzc > 0):
-        raise ValueError('z should be monotonically increasing')
-    if depth is None:
-        depth = z[-1] + dzc[-1]/2
-    else:
-        if depth <= z[-1]:
-            raise ValueError('depth should not be less than maximum z')
-
-    dztop = zc[0]
-    dzbot = depth - zc[-1]
-
-    # put the phi points right between the N2 points
-    zf = np.hstack([0, 0.5*(zc[1:]+zc[:-1]), depth ])
     dzf = np.diff(zf)
     
     ##################
     # We want a matrix representation of the operator such that
     #
-    #     np.dot(L, f) = np.dot(G, f)
-    #
-    # From the discretized equations above, at the surface we get
-    #     L[0, 0] = (( k (U[0] + U[1])/2 + l (V[0] + V[1])/2 ) / dzf[0] - .5*( k ( (U[0] - U[1])/dzf[0] - N2[0]**2/f0 * etay[0] ) + l ( (V[0] - V[1])/dzf[0] + N2[0]**2/f0 * etax[0] ))) 
-    #     L[0, 1] = (( k (U[0] + U[1])/2 + l (V[0] + V[1])/2 ) / (-dzf[0]) - .5*( k ( (U[0] - U[1])/dzf[0] - N2[0]/f0 * etay[0] ) + l ( (V[0] - V[1])/dzf[0] + N2[0]/f0 * etax[0] )))
-    # and
-    #     G[0, 0] = dzf[0]**-1
-    #     G[0, 1] = -dzf[0]**-1
-    #
-    # From symmetry, at the bottom
-    #     L[nz, nz-1] = (( k (U[nz-1] + U[nz])/2 + l (V[nz-1] + V[nz])/2 ) / dzf[nz-1] - .5*( k ( (U[nz-1] - U[nz])/dzf[nz-1] - N2[nz-1]**2/f0 * etay[1] ) + l ( (V[nz-1] - V[nz])/dzf[nz-1] + N2[nz-1]**2/f0 * etax[1] ))) 
-    #     L[nz, nz] = (( k (U[nz-1] + U[nz])/2 + l (V[nz-1] + V[nz])/2 ) / (-dzf[nz-1]) - .5*( k ( (U[nz-1] - U[nz])/dzf[nz-1] - N2[nz-1]/f0 * etay[1] ) + l ( (V[nz-1] - V[nz])/dzf[nz-1] + N2[nz-1]/f0 * etax[1] )))
-    # and
-    #     G[nz, nz-1] = dzf[nz-1]**-1
-    #     G[nz, nz] = -dzf[nz-1]**-1
-    #
-    # In the interior, we have
-    #     L[n, n-1] = (k U[n] + l V[n]) * f**2/dzc[n] / N2[n-1] / dzf[n-1]
-    #     L[n, n] = (k U[n] + l V[]) * ( - f**2/dzc[n] * ( 1/(N2[n] * dzf[n]) + 1/(N2[n-1]*dzf[n-1]) ) - K**2 ) + k*Qy[n] - l*Qx[n] )
-    #     L[n, n+1] = (k U[n] + l V[n]) * f**2/dzc[n] / N2[n] / dzf[n]
-    # and
-    #     G[n, n-1] = f**2/dzc[n] / N2[n-1] / dzf[n-1]
-    #     G[n, n] = ( - f**2/dzc[n] * ( 1/(N2[n]*dzf[n]) + 1/(N2[n-1]*dzf[n-1]) ) - K**2 )
-    #     G[n, n+1] = f**2/dzc[n] / N2[n] / dzf[n]
-    ###################
+    #     np.dot(L, psi) = omega * np.dot(G, psi)
+    ##################
     
     for j in range(len(l)):
         for i in range(len(k)):
@@ -423,6 +427,15 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
 
             ################
             # n = 0 (surface)
+            #
+            # From the discretized equations above, at the surface we get
+            #     L[0, 0] = (( k (U[0] + U[1])/2 + l (V[0] + V[1])/2 ) / dzf[0] 
+            #                 - .5*( k ( (U[0] - U[1])/dzf[0] - N2[0]**2/f0 * etay[0] ) + l ( (V[0] - V[1])/dzf[0] + N2[0]**2/f0 * etax[0] ))) 
+            #     L[0, 1] = (( k (U[0] + U[1])/2 + l (V[0] + V[1])/2 ) / (-dzf[0]) 
+            #                 - .5*( k ( (U[0] - U[1])/dzf[0] - N2[0]/f0 * etay[0] ) + l ( (V[0] - V[1])/dzf[0] + N2[0]/f0 * etax[0] )))
+            # and
+            #     G[0, 0] = dzf[0]**-1
+            #     G[0, 1] = -dzf[0]**-1
             ################
             R = k[i] * .5*(ubar[0]+ubar[1]) + l[j] * .5*(vbar[0]+vbar[1]) 
             D = dzf[0]**-1
@@ -440,6 +453,15 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
 
             ################
             # n = nz (bottom)
+            #
+            # From symmetry, at the bottom
+            #     L[nz, nz-1] = (( k (U[nz-1] + U[nz])/2 + l (V[nz-1] + V[nz])/2 ) / dzf[nz-1] 
+            #           - .5*( k ( (U[nz-1] - U[nz])/dzf[nz-1] - N2[nz-1]**2/f0 * etay[1] ) + l ( (V[nz-1] - V[nz])/dzf[nz-1] + N2[nz-1]**2/f0 * etax[1] ))) 
+            #     L[nz, nz] = (( k (U[nz-1] + U[nz])/2 + l (V[nz-1] + V[nz])/2 ) / (-dzf[nz-1]) 
+            #           - .5*( k ( (U[nz-1] - U[nz])/dzf[nz-1] - N2[nz-1]/f0 * etay[1] ) + l ( (V[nz-1] - V[nz])/dzf[nz-1] + N2[nz-1]/f0 * etax[1] )))
+            # and
+            #     G[nz, nz-1] = dzf[nz-1]**-1
+            #     G[nz, nz] = -dzf[nz-1]**-1
             ################
             R = k[i] * .5*(ubar[nz-1]+ubar[nz]) + l[j] * .5*(vbar[nz-1]+vbar[nz]) 
             D = dzf[nz-1]**-1
@@ -457,6 +479,16 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
 
             ################
             # 0 < n < nz (interior)
+            #
+            # In the interior, we have
+            #     L[n, n-1] = (k U[n] + l V[n] - i Ah K**2) * f**2/dzc[n] / (N2[n-1] * dzf[n-1])
+            #     L[n, n] = (k U[n] + l V[n] - i Ah K**2) 
+            #                     * ( - f**2/dzc[n] * ( 1/(N2[n] * dzf[n]) + 1/(N2[n-1]*dzf[n-1]) ) - K**2 ) + k*Qy[n] - l*Qx[n] )
+            #     L[n, n+1] = (k U[n] + l V[n] - i Ah K**2) * f**2/dzc[n] / (N2[n] * dzf[n])
+            # and
+            #     G[n, n-1] = f**2/dzc[n] / N2[n-1] / dzf[n-1]
+            #     G[n, n] = ( - f**2/dzc[n] * ( 1/(N2[n]*dzf[n]) + 1/(N2[n-1]*dzf[n-1]) ) - K**2 )
+            #     G[n, n+1] = f**2/dzc[n] / N2[n] / dzf[n]
             ################
             for n in range(1,nz):
                 
@@ -469,7 +501,7 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
                 b_1 = N2[n-1] * dzf[n-1]
                 b = N2[n] * dzf[n]
                 B_1 = bf * b_1**-1 
-                B = - (bf * ( b**-1 + b_1**-1 ) + K2)
+                B = - (bf * (b**-1 + b_1**-1) + K2)
                 Bt1 = bf * b**-1 
 
                 N2Z = (N2[n]*dzf[n])**-1
@@ -541,5 +573,5 @@ def _instability_analysis_from_N2_profile_raw(z, N2, f0, beta, k, l, ubar, vbar,
     psi = psi[:, p]
     
     # return the first 'num' leading modes
-    return zf, omega1d[p], omega[:num], psi[:, :num]
+    return zf, omega[:num], psi[:, :num]
     
