@@ -533,15 +533,6 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
             if len(kwargs) > 0:
                 errstr = 'You have defined additional parameters for scipy.sparse.linalg.eigs'
                 warnings.warn(errstr)
-                # for key, value in kwargs.iteritems():
-                #     if key == 'num_Lanczos':
-                #         num_Lanczos = value
-                #     elif key == 'iteration':
-                #         iteration = value
-                #     elif key == 'v0':
-                #         v0 = value
-                #     elif key == 'tol':
-                #         tol = value
             else:
                 num_Lanczos = nz
                 iteration = 10*nz
