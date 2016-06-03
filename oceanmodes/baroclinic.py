@@ -349,9 +349,9 @@ def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar
             Total water column depth. If missing will be inferred from z.
         kwargs : optional
             Additional parameters to pass to scipy.sparse.linalg.eigs for
-            eigenvalue computation (Need to define all four parameters, i.e.
-            v0, number of Lanczos vectors, maximum iterations, 
-            and tolerance of accuracy of eigen solutions)
+            eigenvalue computation (check documentation:
+            http://docs.scipy.org/doc/scipy-0.17.0/reference/generated/scipy.sparse.linalg.eigs.html
+            for how to define other parameters)
     
     
         Returns
@@ -373,6 +373,8 @@ def instability_analysis_from_N2_profile(zN2, N2, f0, beta, k, l, zU, ubar, vbar
     # make sure length of N2 is one shorter than velocities
     if len(N2) > len(ubar)-1:
         raise ValueError('N2 has the same or longer length than horizontal velocities')
+    elif len(N2) < len(ubar)-1:
+        warnings.warn('N2 is shorter than horizontal velocities by more than one element')
     
     # make sure z is increasing
     if not np.all(dzc > 0):
@@ -528,36 +530,35 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
         #             G[n, n+1] = 1.
         
             # read in kwargs if any
-            if len(kwargs) == 4:
+            if len(kwargs) > 0:
                 errstr = 'You have defined additional parameters for scipy.sparse.linalg.eigs'
                 warnings.warn(errstr)
-                for key, value in kwargs.iteritems():
-                    if key == 'num_Lanczos':
-                        num_Lanczos = value
-                    elif key == 'iteration':
-                        iteration = value
-                    elif key == 'v0':
-                        v0 = value
-                    elif key == 'tol':
-                        tol = value
+                # for key, value in kwargs.iteritems():
+                #     if key == 'num_Lanczos':
+                #         num_Lanczos = value
+                #     elif key == 'iteration':
+                #         iteration = value
+                #     elif key == 'v0':
+                #         v0 = value
+                #     elif key == 'tol':
+                #         tol = value
             else:
-                v0 = None
-                tol = 0
                 num_Lanczos = nz
                 iteration = 10*nz
 
             val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                            k=num, which='LI', ncv=num_Lanczos, maxiter=iteration )  # default returns 6 eigenvectors
-#         val, func = eigs( csc_matrix(L), k=4, M=csc_matrix(G), 
-#                                  which='LI', sigma=1e1j, ncv=20 )
+                                             k=num, which='LI', ncv=num_Lanczos, maxiter=iteration,
+                                             **kwargs)  # default returns 6 eigenvectors
+            # val, func = eigs( csc_matrix(L), M=csc_matrix(G), Minv=csc_matrix(inv(csc_matrix(G))), 
+            #                 k=num, which='LI', ncv=num_Lanczos, maxiter=iteration, **kwargs )
                 
             ###########
             # eigs returns complex values. For a linear-stability analysis, 
             # we don't want the eigenvalues to be real
             ###########
             if i == 0 and j == 0:
-                omega = np.zeros( (len(val), len(l), len(k)), dtype=complex )
-                psi = np.zeros( (nz+1, len(val), len(l), len(k)), dtype=complex )
+                omega = np.zeros( (len(val), len(l), len(k)), dtype=np.complex128 )
+                psi = np.zeros( (nz+1, len(val), len(l), len(k)), dtype=np.complex128 )
             omega[:, j, i] = val
             psi[:, :, j, i] = func  # Each column is the eigenfunction
     
