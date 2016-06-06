@@ -565,7 +565,7 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
                 psi[:, :, j, i] = func  # Each column is the eigenfunction
             
             except RuntimeError:
-                warnings.warn('The matrix is ill-conditioned or singular')
+                warnings.warn('The matrix is ill-conditioned or singular', RuntimeWarning)
                 if i == 0 and j == 0:
                     omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
                     psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )

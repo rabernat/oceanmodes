@@ -4,6 +4,7 @@ from builtins import *
 #
 import numpy as np
 import unittest
+import warnings
 import oceanmodes as modes
 from scipy import fftpack as fft
 # reload(modes)
@@ -155,7 +156,7 @@ class TestNeutralModes(unittest.TestCase):
             msg='Rossby radius should be exact to the solution')
 
         self.assertTrue(np.allclose(np.diff(v[:, 0]), 0.),
-            msg='The barotropic vertical mode should have all same elements')
+            msg='The barotropic vertical mode should have all same value')
         
         v1 = np.array([ 0.2287108,  0.22844163,  0.22738221,  0.22538205,  0.22315635,  0.22100572,
           0.21890111,  0.21681132,  0.21466035,  0.21249153,  0.21051281,  0.20857709,
@@ -262,6 +263,22 @@ class TestLinearInstability(unittest.TestCase):
             _, _, _ = modes.instability_analysis_from_N2_profile(
                 depth, N2, 1., beta, k ,l, depth, ubar, vbar, etax, etay
             )
+        
+        N2 = np.zeros(nz)
+        depth = np.arange(nz+1)
+        ubar = np.zeros(nz+1)
+        vbar = np.zeros(nz+1)
+        etax = np.zeros(2)
+        etay = np.zeros(2)
+        beta = 0.
+        with warnings.catch_warnings(record=True) as w:
+            # Trigger a warning
+            _, _, _ = modes.instability_analysis_from_N2_profile(
+                depth[:-1], N2, 0., beta, k ,l, depth, ubar, vbar, etax, etay
+            )
+            # Verify some things
+            self.assertTrue( issubclass(w[-1].category, RuntimeWarning) )
+            self.assertEqual("The matrix is ill-conditioned or singular", str(w[-1].message))
 
     def test_Eady(self, atol=5e-2, nz=20, Ah=0.):
         """ Eady setup
