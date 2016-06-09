@@ -2,9 +2,10 @@
 from __future__ import absolute_import, division, print_function
 from builtins import *
 #
+import sys
 import numpy as np
 from scipy import fftpack as fft
-from scipy.sparse import lil_matrix, csc_matrix
+from scipy.sparse import lil_matrix, csc_matrix, csr_matrix
 from scipy.sparse.linalg import eigs, inv
 import warnings
 
@@ -172,8 +173,15 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
     b = (dzf[nz-1] * N2[nz-1] * dzbot)**-1
     L[nz,-2:] = [b, -b]
 
-    # this gets the eignevalues and eigenvectors
-    w, v = eigs(L, which='SM')
+    # this gets the eigenvalues and eigenvectors
+    if nz <= 2:
+        w, v = eigs(L, k=nz-1, which='SM')
+    elif nz > 2 and len(kwargs) > 0:
+        w, v = eigs( L, k=kwargs['num_eigen'], which='SM', v0=kwargs['init_vector'], 
+                        ncv=kwargs['num_Lanczos'], maxiter=kwargs['iteration'],
+                        tol=kwargs['tolerance'])
+    else:
+        w, v = eigs(L, which='SM')
 
     # eigs returns complex values. Make sure they are actually real
     tol = 1e-20
@@ -527,31 +535,42 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
         #             L[n, n+1] = R
         #             G[n, n-1] = 1.
         #             G[n, n] = 1.
-        #             G[n, n+1] = 1.
-        
-            # read in kwargs if any
-            if len(kwargs) > 0:
-                errstr = 'You have defined additional parameters for scipy.sparse.linalg.eigs'
-                warnings.warn(errstr)
-            else:
-                num_Lanczos = nz
-                iteration = 10*nz
+        #             G[n, n+1] = 1.        
+                    
+            # Return Nans if matrix G is singular
+            try:
+                # read in kwargs if any
+                if len(kwargs) > 0:
+                    val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
+                                                 k=num, which='LI', v0=kwargs['init_vector'], 
+                                     ncv=kwargs['num_Lanczos'], maxiter=kwargs['iteration'],
+                                    tol=kwargs['tolerance'])  # default returns 6 eigenvectors
+                else:
+                    num_Lanczos = nz
+                    iteration = 10*nz
+                    val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
+                                                 k=num, which='LI', ncv=num_Lanczos, maxiter=iteration,
+                                       )  # default returns 6 eigenvectors
+                # val, func = eigs( csc_matrix(L), M=csc_matrix(G), Minv=csc_matrix(inv(csc_matrix(G))), 
+                #                 k=num, which='LI', ncv=num_Lanczos, maxiter=iteration, **kwargs )
 
-            val, func = eigs( csc_matrix(inv(csc_matrix(G)).dot(csc_matrix(L))), 
-                                             k=num, which='LI', ncv=num_Lanczos, maxiter=iteration,
-                                             **kwargs)  # default returns 6 eigenvectors
-            # val, func = eigs( csc_matrix(L), M=csc_matrix(G), Minv=csc_matrix(inv(csc_matrix(G))), 
-            #                 k=num, which='LI', ncv=num_Lanczos, maxiter=iteration, **kwargs )
-                
-            ###########
-            # eigs returns complex values. For a linear-stability analysis, 
-            # we don't want the eigenvalues to be real
-            ###########
-            if i == 0 and j == 0:
-                omega = np.zeros( (len(val), len(l), len(k)), dtype=np.complex128 )
-                psi = np.zeros( (nz+1, len(val), len(l), len(k)), dtype=np.complex128 )
-            omega[:, j, i] = val
-            psi[:, :, j, i] = func  # Each column is the eigenfunction
+                ###########
+                # eigs returns complex values. For a linear-stability analysis, 
+                # we don't want the eigenvalues to be real
+                ###########
+                if i == 0 and j == 0:
+                    omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
+                    psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )
+                omega[:, j, i] = val
+                psi[:, :, j, i] = func  # Each column is the eigenfunction
+            
+            except RuntimeError:
+                warnings.warn('The matrix is ill-conditioned or singular', RuntimeWarning)
+                if i == 0 and j == 0:
+                    omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
+                    psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )
+                omega[:, j, i] = np.nan
+                psi[:, :, j, i] = np.nan
     
     ###########
     # they are often sorted and normalized but not always,
@@ -559,7 +578,7 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
     # sort them by the imaginary part of the eigenvalues 
     # (growth rate)
     ###########
-    omega1d = omega.reshape( (len(val), len(k)*len(l)) ).imag.max(axis=1)
+    omega1d = omega.reshape( (num, len(k)*len(l)) ).imag.max(axis=1)
     p = np.argsort(omega1d)[::-1]
     omega = omega[p]
     psi = psi[:, p]
