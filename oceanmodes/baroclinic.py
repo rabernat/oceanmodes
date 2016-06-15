@@ -426,6 +426,9 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
     #     np.dot(L, psi) = omega * np.dot(G, psi)
     ##################
     
+    omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
+    psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )
+    
     for j in range(len(l)):
         for i in range(len(k)):
             
@@ -558,17 +561,11 @@ def _instability_analysis_from_N2_profile_raw(zc, N2, f0, beta, k, l, zf, ubar, 
                 # eigs returns complex values. For a linear-stability analysis, 
                 # we don't want the eigenvalues to be real
                 ###########
-                if i == 0 and j == 0:
-                    omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
-                    psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )
                 omega[:, j, i] = val
                 psi[:, :, j, i] = func  # Each column is the eigenfunction
             
             except RuntimeError:
                 warnings.warn('The matrix is ill-conditioned or singular', RuntimeWarning)
-                if i == 0 and j == 0:
-                    omega = np.zeros( (num, len(l), len(k)), dtype=np.complex128 )
-                    psi = np.zeros( (nz+1, num, len(l), len(k)), dtype=np.complex128 )
                 omega[:, j, i] = np.nan
                 psi[:, :, j, i] = np.nan
     
