@@ -117,6 +117,8 @@ def _neutral_modes_from_N2_profile_raw(z, N2, f0, depth=None, **kwargs):
     # make sure z is increasing
     if not np.all(dzc > 0):
         raise ValueError('z should be monotonically increasing')
+    if z[0] == 0:
+        raise ValueError('z[0] should be non-zero, as it is a point where gradient quantity (N2) is defined')
     if depth is None:
         depth = z[-1] + dzc[-1]/2
     else:
